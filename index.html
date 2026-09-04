@@ -1,0 +1,2302 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AI StudyOS — Personal Study Assistant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ════════════════════════ 1. DESIGN TOKENS ════════════════════════ */
+:root{
+  --bg:#f4f1ea; --panel:#fdfcf8; --panel2:#ece8dd; --ink:#201f1a; --ink2:#5c5749; --ink3:#8f8a7a;
+  --line:#e0dbcd; --line2:#d3cdbb; --accent:#2c6b4f; --accent-soft:#dfeae2; --accent-ink:#f2f7f3;
+  --amber:#a9752c; --amber-soft:#f3e8d3; --danger:#ac4638; --danger-soft:#f4e0dc; --info:#38607f; --info-soft:#dfe9f0;
+  --ok:#2c6b4f; --ok-soft:#dfeae2;
+  --sh:0 1px 2px rgba(32,31,26,.05),0 10px 30px -18px rgba(32,31,26,.25);
+  --sh-lg:0 2px 6px rgba(32,31,26,.07),0 24px 60px -24px rgba(32,31,26,.35);
+  --r:14px; --r-sm:9px;
+  --fd:"Fraunces",Georgia,serif; --fs:"Instrument Sans",-apple-system,sans-serif;
+}
+[data-theme="dark"]{
+  --bg:#141612; --panel:#1b1e19; --panel2:#242821; --ink:#ece9dd; --ink2:#aaa898; --ink3:#7b796a;
+  --line:#2b2f28; --line2:#383d33; --accent:#63a884; --accent-soft:#243529; --accent-ink:#0e130f;
+  --amber:#d0a04c; --amber-soft:#332b1c; --danger:#d3716a; --danger-soft:#37231f; --info:#7ba7c4; --info-soft:#1f2b33;
+  --ok:#63a884; --ok-soft:#243529;
+  --sh:0 1px 2px rgba(0,0,0,.3),0 10px 30px -18px rgba(0,0,0,.6);
+  --sh-lg:0 2px 6px rgba(0,0,0,.35),0 24px 60px -24px rgba(0,0,0,.7);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{font-family:var(--fs);background:var(--bg);color:var(--ink);font-size:14.5px;line-height:1.5;overflow:hidden;height:100dvh}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer;background:none;border:none}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+::-webkit-scrollbar{width:9px;height:9px}::-webkit-scrollbar-thumb{background:var(--line2);border-radius:9px}::-webkit-scrollbar-track{background:transparent}
+h1,h2,h3,.serif{font-family:var(--fd);font-weight:600;letter-spacing:-.01em}
+.num{font-variant-numeric:tabular-nums}
+body.rm *{transition:none!important;animation:none!important}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* ════════════════════════ 2. APP SHELL ════════════════════════ */
+.app{display:grid;grid-template-columns:236px 1fr;grid-template-rows:58px 1fr;height:100dvh}
+.sidebar{grid-row:1/3;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:14px 10px;overflow-y:auto;z-index:60}
+.brand{display:flex;align-items:center;gap:10px;padding:6px 10px 16px}
+.brand-mark{width:34px;height:34px;border-radius:10px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;flex:none}
+.brand h1{font-size:17px;line-height:1.1}
+.brand small{display:block;font-family:var(--fs);font-weight:500;font-size:10.5px;color:var(--ink3);letter-spacing:.08em;text-transform:uppercase}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav-label{font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);padding:14px 12px 5px}
+.nav button{display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:var(--r-sm);color:var(--ink2);font-weight:500;text-align:left;width:100%;transition:background .15s,color .15s;font-size:13.5px}
+.nav button:hover{background:var(--panel2);color:var(--ink)}
+.nav button.on{background:var(--accent);color:var(--accent-ink);font-weight:600}
+.nav button svg{width:17px;height:17px;flex:none}
+.nav .badge{margin-left:auto;background:var(--danger);color:#fff;font-size:10.5px;font-weight:700;border-radius:99px;padding:1px 7px}
+.nav button.on .badge{background:rgba(255,255,255,.28)}
+.side-foot{margin-top:auto;padding:12px 6px 4px;border-top:1px solid var(--line);font-size:12px;color:var(--ink3)}
+.side-foot .streak{display:flex;align-items:center;gap:8px;color:var(--ink2);font-weight:600;padding:6px 6px 10px}
+
+.topbar{grid-column:2;display:flex;align-items:center;gap:12px;padding:0 18px;background:var(--bg);border-bottom:1px solid var(--line);z-index:40}
+.topbar .clock{font-weight:600;font-size:14px;color:var(--ink2);white-space:nowrap}
+.searchbox{position:relative;flex:1;max-width:460px}
+.searchbox svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--ink3)}
+.searchbox input{width:100%;padding:8px 12px 8px 34px;border:1px solid var(--line);border-radius:99px;background:var(--panel);font-size:13.5px}
+.searchbox input:focus{border-color:var(--accent);outline:none}
+.search-drop{position:absolute;top:calc(100% + 6px);left:0;right:0;max-height:60vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh-lg);z-index:90;display:none}
+.search-drop.open{display:block}
+.sr-group{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--ink3);padding:9px 14px 3px}
+.sr-item{display:flex;align-items:center;gap:9px;padding:8px 14px;cursor:pointer;font-size:13.5px}
+.sr-item:hover{background:var(--panel2)}
+.sr-item small{color:var(--ink3);margin-left:auto;flex:none}
+.icon-btn{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;color:var(--ink2);position:relative;transition:background .15s}
+.icon-btn:hover{background:var(--panel2)}
+.icon-btn svg{width:18px;height:18px}
+.icon-btn .dot{position:absolute;top:7px;right:7px;min-width:15px;height:15px;border-radius:99px;background:var(--danger);color:#fff;font-size:9.5px;font-weight:700;display:grid;place-items:center;padding:0 3px}
+.burger{display:none}
+
+main{grid-column:2;overflow-y:auto;padding:22px 24px 60px;scroll-behavior:smooth}
+.view{max-width:1180px;margin:0 auto;animation:vin .25s ease}
+@keyframes vin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ════════════════════════ 3. COMPONENTS ════════════════════════ */
+.page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin-bottom:18px;flex-wrap:wrap}
+.page-head h2{font-size:26px}
+.page-head p{color:var(--ink2);font-size:13.5px}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:8px 15px;border-radius:10px;font-weight:600;font-size:13.5px;border:1px solid var(--line);background:var(--panel);color:var(--ink);transition:filter .15s,background .15s;white-space:nowrap}
+.btn:hover{background:var(--panel2)}
+.btn svg{width:15px;height:15px}
+.btn.pri{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+.btn.pri:hover{filter:brightness(1.08)}
+.btn.danger{color:var(--danger);border-color:var(--danger)}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--ink2)}
+.btn.ghost:hover{background:var(--panel2);color:var(--ink)}
+.btn.sm{padding:5px 11px;font-size:12.5px;border-radius:8px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh)}
+.card .card-h{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line)}
+.card .card-h h3{font-size:15.5px}
+.card .card-b{padding:16px 18px}
+.grid{display:grid;gap:16px}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap}
+.badge svg{width:11px;height:11px}
+.b-ok{background:var(--ok-soft);color:var(--ok)} .b-warn{background:var(--amber-soft);color:var(--amber)}
+.b-danger{background:var(--danger-soft);color:var(--danger)} .b-info{background:var(--info-soft);color:var(--info)}
+.b-mut{background:var(--panel2);color:var(--ink2)} .b-acc{background:var(--accent-soft);color:var(--accent)}
+.pbar{height:7px;background:var(--panel2);border-radius:99px;overflow:hidden}
+.pbar i{display:block;height:100%;background:var(--accent);border-radius:99px;transition:width .5s ease}
+.pbar.amber i{background:var(--amber)} .pbar.danger i{background:var(--danger)}
+.empty{padding:34px 18px;text-align:center;color:var(--ink3);font-size:13.5px}
+.empty svg{width:30px;height:30px;margin-bottom:8px;opacity:.5}
+.row-item{display:flex;align-items:center;gap:12px;padding:11px 4px;border-bottom:1px solid var(--line)}
+.row-item:last-child{border-bottom:none}
+.row-item .grow{flex:1;min-width:0}
+.row-item .t{font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row-item .s{font-size:12px;color:var(--ink3)}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:7px;background:var(--panel2);color:var(--ink2)}
+.chip svg{width:11px;height:11px}
+.subj-dot{width:9px;height:9px;border-radius:3px;flex:none}
+.tabs{display:flex;gap:4px;background:var(--panel2);padding:4px;border-radius:11px;width:max-content;max-width:100%;overflow-x:auto}
+.tabs button{padding:6px 13px;border-radius:8px;font-weight:600;font-size:12.5px;color:var(--ink2);white-space:nowrap}
+.tabs button.on{background:var(--panel);color:var(--ink);box-shadow:var(--sh)}
+abbr{cursor:help}
+
+/* stat strip */
+.stat-strip{display:flex;gap:0;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh);overflow-x:auto}
+.stat{flex:1;min-width:118px;padding:14px 16px;border-right:1px solid var(--line)}
+.stat:last-child{border-right:none}
+.stat .k{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--ink3);white-space:nowrap}
+.stat .v{font-family:var(--fd);font-size:25px;font-weight:600;margin-top:2px;line-height:1.1}
+.stat .v small{font-size:13px;font-family:var(--fs);font-weight:600;color:var(--ink3)}
+.stat.warn .v{color:var(--amber)} .stat.bad .v{color:var(--danger)} .stat.good .v{color:var(--accent)}
+
+/* timeline */
+.tl{position:relative;padding-left:20px}
+.tl::before{content:"";position:absolute;left:6px;top:8px;bottom:8px;width:2px;background:var(--line)}
+.tl-item{position:relative;padding:0 0 16px 8px}
+.tl-item::before{content:"";position:absolute;left:-19px;top:5px;width:12px;height:12px;border-radius:99px;background:var(--panel);border:3px solid var(--ink3)}
+.tl-item.now::before{border-color:var(--accent);background:var(--accent)}
+.tl-item.past{opacity:.55}
+
+/* modal */
+.mback{position:fixed;inset:0;background:rgba(20,20,15,.5);backdrop-filter:blur(3px);z-index:100;display:grid;place-items:center;padding:16px;animation:fin .18s ease}
+@keyframes fin{from{opacity:0}to{opacity:1}}
+.mback{animation:fin .18s ease}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:18px;box-shadow:var(--sh-lg);width:100%;max-width:560px;max-height:90dvh;display:flex;flex-direction:column;animation:min .22s cubic-bezier(.2,.9,.3,1.2)}
+@keyframes min{from{opacity:0;transform:translateY(16px) scale(.98)}to{opacity:1;transform:none}}
+.modal.lg{max-width:760px}
+.modal-h{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:18px 22px 0}
+.modal-h h3{font-size:19px}
+.modal-b{padding:16px 22px;overflow-y:auto}
+.modal-f{display:flex;justify-content:flex-end;gap:9px;padding:0 22px 20px}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.frow .full{grid-column:1/-1}
+.fld{margin-bottom:12px}
+.fld label{display:block;font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:5px}
+.fld input,.fld select,.fld textarea{width:100%;padding:9px 12px;border:1px solid var(--line2);border-radius:10px;background:var(--bg);font-size:13.5px}
+.fld input:focus,.fld select:focus,.fld textarea:focus{border-color:var(--accent);outline:none}
+.fld textarea{resize:vertical;min-height:74px}
+.fld .range-wrap{display:flex;align-items:center;gap:10px}
+.fld input[type=range]{flex:1;padding:0;accent-color:var(--accent)}
+.fld .range-v{font-weight:700;min-width:26px;text-align:center;font-family:var(--fd)}
+.hint{font-size:12px;color:var(--ink3);margin-top:4px}
+
+/* toast */
+#toasts{position:fixed;bottom:20px;right:20px;z-index:200;display:flex;flex-direction:column;gap:9px;max-width:360px}
+.toast{background:var(--ink);color:var(--bg);padding:12px 16px;border-radius:12px;box-shadow:var(--sh-lg);font-size:13.5px;font-weight:500;display:flex;gap:10px;align-items:flex-start;animation:tin .3s cubic-bezier(.2,.9,.3,1.2)}
+.toast svg{width:16px;height:16px;flex:none;margin-top:1px}
+.toast.ok svg{color:var(--ok)} .toast.warn svg{color:var(--amber)} .toast.bad svg{color:var(--danger)} .toast.info svg{color:var(--info)}
+[data-theme="dark"] .toast{background:#eeeadd;color:#1b1a15}
+@keyframes tin{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
+
+/* notif panel */
+.npanel{position:fixed;top:64px;right:18px;width:min(380px,calc(100vw - 24px));max-height:70vh;overflow-y:auto;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh-lg);z-index:95;display:none}
+.npanel.open{display:block}
+.nitem{padding:12px 16px;border-bottom:1px solid var(--line);display:flex;gap:10px;font-size:13px}
+.nitem:last-child{border:none}
+.nitem .ni{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;flex:none}
+.nitem .ni svg{width:15px;height:15px}
+.nitem .when{font-size:11px;color:var(--ink3);margin-top:2px}
+.nitem.unread{background:var(--accent-soft)}
+
+/* dashboard */
+.hero{display:grid;grid-template-columns:300px 1fr 320px;gap:16px;margin-bottom:16px}
+.ring-wrap{display:flex;flex-direction:column;align-items:center;padding:20px}
+.ring-wrap canvas{width:158px;height:158px}
+.ring-num{font-family:var(--fd);font-size:33px;font-weight:600;margin-top:-116px;pointer-events:none;line-height:1}
+.ring-lab{margin-top:84px;font-size:12px;font-weight:600;color:var(--ink3);text-align:center}
+.brief{background:var(--accent);color:var(--accent-ink);border-radius:var(--r);padding:16px 18px;margin-bottom:16px;display:flex;gap:14px;align-items:flex-start}
+.brief svg{width:20px;height:20px;flex:none;margin-top:2px}
+.brief ol{margin:6px 0 0 18px}
+.brief li{margin:2px 0}
+.nowcard .blk{padding:12px 0;border-bottom:1px solid var(--line)}
+.nowcard .blk:last-child{border:none}
+.aicard{background:var(--panel);border:1px solid var(--accent);border-radius:var(--r);padding:16px;box-shadow:var(--sh);display:flex;flex-direction:column;gap:9px}
+.aicard .why{display:flex;flex-wrap:wrap;gap:6px}
+.dash-grid{display:grid;grid-template-columns:1.25fr 1fr;gap:16px;margin-bottom:16px}
+.daybar{display:flex;height:44px;border-radius:10px;overflow:hidden;border:1px solid var(--line);margin:10px 0 6px}
+.daybar .seg{position:relative;height:100%;min-width:4px}
+.daybar .nowline{position:absolute;top:-5px;bottom:-5px;width:2px;background:var(--danger);z-index:2}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:11.5px;color:var(--ink2);margin-top:8px}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend i{width:9px;height:9px;border-radius:3px}
+
+/* quick actions */
+.qa{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:16px}
+.qa button{display:inline-flex;align-items:center;gap:8px;padding:10px 15px;background:var(--panel);border:1px solid var(--line);border-radius:12px;font-weight:600;font-size:13px;color:var(--ink2);transition:all .15s;box-shadow:var(--sh)}
+.qa button:hover{border-color:var(--accent);color:var(--accent);transform:translateY(-1px)}
+.qa button svg{width:15px;height:15px}
+
+/* calendar */
+.cal-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.cal-dow{font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink3);text-align:center;padding:4px 0}
+.cal-cell{background:var(--panel);border:1px solid var(--line);border-radius:10px;min-height:78px;padding:6px 7px;cursor:pointer;transition:border-color .15s;font-size:12px}
+.cal-cell:hover{border-color:var(--accent)}
+.cal-cell.out{opacity:.4}
+.cal-cell.today{border-color:var(--accent);border-width:2px}
+.cal-cell .d{font-weight:700;font-size:12.5px}
+.cal-dots{display:flex;flex-wrap:wrap;gap:3px;margin-top:5px}
+.cal-dots i{width:7px;height:7px;border-radius:99px}
+.cal-ev{display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 9px;margin-bottom:6px;cursor:pointer;font-size:12.5px}
+.cal-ev:hover{border-color:var(--accent)}
+.week-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+.week-col{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:9px;min-height:180px}
+.week-col.today{border-color:var(--accent)}
+.week-col .wh{font-weight:700;font-size:12px;text-align:center;padding-bottom:7px;border-bottom:1px solid var(--line);margin-bottom:8px}
+
+/* focus */
+.focus-wrap{max-width:520px;margin:0 auto;text-align:center}
+.focus-ring{position:relative;width:270px;height:270px;margin:14px auto}
+.focus-ring canvas{width:270px;height:270px}
+.focus-time{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--fd);font-size:56px;font-weight:600}
+.focus-ctl{display:flex;justify-content:center;gap:10px;margin:16px 0}
+
+/* chat */
+.chat-wrap{display:flex;flex-direction:column;height:calc(100dvh - 170px);max-height:760px}
+.chat-log{flex:1;overflow-y:auto;padding:6px 2px;display:flex;flex-direction:column;gap:12px}
+.msg{max-width:82%;padding:11px 15px;border-radius:15px;font-size:13.5px;white-space:pre-wrap;word-break:break-word}
+.msg.user{align-self:flex-end;background:var(--accent);color:var(--accent-ink);border-bottom-right-radius:4px}
+.msg.ai{align-self:flex-start;background:var(--panel);border:1px solid var(--line);border-bottom-left-radius:4px;box-shadow:var(--sh)}
+.msg.ai .src{display:block;margin-top:8px;font-size:11px;color:var(--ink3)}
+.chat-in{display:flex;gap:9px;padding-top:12px;border-top:1px solid var(--line);margin-top:8px}
+.chat-in input{flex:1;padding:11px 15px;border:1px solid var(--line2);border-radius:12px;background:var(--panel)}
+.chat-in input:focus{border-color:var(--accent);outline:none}
+.chips{display:flex;gap:7px;flex-wrap:wrap;padding-bottom:10px}
+.chips button{font-size:12px;font-weight:600;padding:6px 12px;border-radius:99px;background:var(--panel2);color:var(--ink2)}
+.chips button:hover{background:var(--accent-soft);color:var(--accent)}
+
+/* subjects */
+.subj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+.subj-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:17px;box-shadow:var(--sh)}
+.subj-card .sc-h{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.chapter{border:1px solid var(--line);border-radius:10px;margin-bottom:8px;overflow:hidden}
+.chapter>.ch-h{display:flex;align-items:center;gap:9px;padding:9px 12px;background:var(--panel2);font-weight:600;font-size:13px;cursor:pointer}
+.topic{display:flex;align-items:center;gap:8px;padding:7px 12px;border-top:1px solid var(--line);font-size:13px}
+.topic .conf{margin-left:auto;font-size:11px;font-weight:700}
+
+/* habits */
+.habit-grid{display:grid;grid-template-columns:1fr auto;gap:0;font-size:12px}
+.habit-cell{width:26px;height:30px;display:grid;place-items:center}
+.habit-cell button{width:22px;height:22px;border-radius:7px;border:1px solid var(--line2);background:var(--panel)}
+.habit-cell button.on{background:var(--accent);border-color:var(--accent)}
+.habit-cell button.on::after{content:"";display:block;width:8px;height:8px;border-radius:2px;background:var(--accent-ink)}
+
+/* onboarding */
+.ob-step{display:none}.ob-step.on{display:block}
+.ob-progress{display:flex;gap:6px;margin-bottom:18px}
+.ob-progress i{height:4px;flex:1;border-radius:99px;background:var(--panel2)}
+.ob-progress i.on{background:var(--accent)}
+
+/* bottom nav (mobile) */
+.bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--panel);border-top:1px solid var(--line);z-index:80;padding:6px 4px calc(6px + env(safe-area-inset-bottom));grid-template-columns:repeat(5,1fr)}
+.bottom-nav button{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;font-weight:600;color:var(--ink3);padding:5px 0}
+.bottom-nav button svg{width:20px;height:20px}
+.bottom-nav button.on{color:var(--accent)}
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:55;display:none}
+.scrim.open{display:block}
+
+/* ════════════════════════ 4. RESPONSIVE ════════════════════════ */
+@media(max-width:1080px){
+  .hero{grid-template-columns:260px 1fr}
+  .hero .aicard{grid-column:1/-1}
+  .dash-grid{grid-template-columns:1fr}
+}
+@media(max-width:900px){
+  .app{grid-template-columns:1fr}
+  .sidebar{position:fixed;left:0;top:0;bottom:0;width:250px;transform:translateX(-105%);transition:transform .25s ease;box-shadow:var(--sh-lg)}
+  .sidebar.open{transform:none}
+  .topbar{grid-column:1}
+  main{grid-column:1}
+  .burger{display:grid}
+  .bottom-nav{display:grid}
+  main{padding:16px 14px 92px}
+  .hero{grid-template-columns:1fr}
+  .week-grid{grid-template-columns:1fr}
+  .week-col{min-height:0}
+  .stat{min-width:104px}
+  #toasts{left:14px;right:14px;bottom:74px;max-width:none}
+  .npanel{top:60px;right:10px;left:auto}
+  .frow{grid-template-columns:1fr}
+  .page-head h2{font-size:22px}
+  .focus-ring,.focus-ring canvas{width:230px;height:230px}
+  .focus-time{font-size:46px}
+  .chat-wrap{height:calc(100dvh - 210px)}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+    <div class="brand">
+      <div class="brand-mark"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M9 8l2 2 4-4" stroke-width="2.2"/></svg></div>
+      <h1 class="serif">StudyOS<small id="userTag">personal assistant</small></h1>
+    </div>
+    <nav class="nav" id="nav"></nav>
+    <div class="side-foot">
+      <div class="streak" id="sideStreak"></div>
+      <div>Your study data is stored locally on this device. Nothing leaves your browser unless you connect an AI API yourself.</div>
+    </div>
+  </aside>
+  <div class="scrim" id="scrim" data-act="closeSidebar"></div>
+
+  <header class="topbar">
+    <button class="icon-btn burger" data-act="openSidebar" aria-label="Open menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+    <div class="searchbox">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <input id="globalSearch" type="search" placeholder="Search tasks, notes, subjects…  ( / )" aria-label="Global search">
+      <div class="search-drop" id="searchDrop" role="listbox"></div>
+    </div>
+    <span class="clock num" id="clock"></span>
+    <button class="icon-btn" data-act="toggleTheme" aria-label="Toggle theme" id="themeBtn"></button>
+    <button class="icon-btn" data-act="toggleNotifPanel" aria-label="Notifications" id="bellBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg><span class="dot" id="bellDot" style="display:none">0</span></button>
+  </header>
+
+  <main id="main" tabindex="-1"></main>
+</div>
+
+<nav class="bottom-nav" id="bottomNav" aria-label="Quick navigation"></nav>
+<div id="toasts" aria-live="polite"></div>
+<div class="npanel" id="npanel" aria-label="Notification center"></div>
+<input type="file" id="importFile" accept=".json" style="display:none">
+
+<script>
+"use strict";
+/* ════════════════════════════ 1. UTILITIES ════════════════════════════ */
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const uid=()=>Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-4);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad=n=>String(n).padStart(2,'0');
+const dISO=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const todayISO=()=>dISO(new Date());
+const pd=s=>{const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d);};
+const addDays=(iso,n)=>{const d=pd(iso);d.setDate(d.getDate()+n);return dISO(d);};
+const daysBetween=(a,b)=>Math.round((pd(b)-pd(a))/864e5);
+const fmtDate=iso=>{if(!iso)return'—';const d=pd(iso);return d.toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'});};
+const fmtMin=m=>{m=Math.round(m||0);if(m<60)return m+'m';const h=Math.floor(m/60);return h+'h '+(m%60?String(m%60)+'m':'');};
+const toMin=t=>{const[h,m]=t.split(':').map(Number);return h*60+m;};
+const nowMin=()=>{const d=new Date();return d.getHours()*60+d.getMinutes();};
+const nowHM=()=>{const d=new Date();return pad(d.getHours())+':'+pad(d.getMinutes());};
+const debounce=(fn,ms)=>{let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms);};};
+const pct=(a,b)=>b>0?Math.min(100,Math.round(a/b*100)):0;
+const PALETTE=['#2c6b4f','#a9752c','#38607f','#ac4638','#6b5b8f','#3f7a6e','#8a5a44','#5c6b2c','#8f3f62','#44688a'];
+const WEEKDAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+/* ════════════════════════════ 2. ICONS (inline SVG set) ════════════════════════════ */
+const IC={
+ dash:'<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>',
+ plan:'<path d="M8 2v4M16 2v4"/><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18M8 15l2.5 2.5L15 13"/>',
+ routine:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>',
+ out:'<path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>',
+ cal:'<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 9h18"/>',
+ book:'<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
+ exam:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 15l2 2 4-4"/>',
+ focus:'<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/>',
+ repeat:'<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14M7 22l-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',
+ chart:'<path d="M3 3v18h18"/><path d="M7 15v-4M12 15V7M17 15v-7"/>',
+ note:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+ test:'<path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/>',
+ mistake:'<circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/>',
+ assign:'<rect x="3" y="7" width="18" height="14" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18"/>',
+ goal:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/>',
+ habit:'<path d="M22 12h-4l-3 8L9 4l-3 8H2"/>',
+ ai:'<path d="M12 2a4 4 0 0 1 4 4c2.2.6 4 2.6 4 5a5 5 0 0 1-2 4v3a2 2 0 0 1-2 2h-8a2 2 0 0 1-2-2v-3a5 5 0 0 1-2-4c0-2.4 1.8-4.4 4-5a4 4 0 0 1 4-4z"/><path d="M9 13h.01M15 13h.01M9.5 17h5"/>',
+ set:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+ plus:'<path d="M12 5v14M5 12h14"/>',
+ check:'<path d="M20 6 9 17l-5-5"/>',
+ x:'<path d="M18 6 6 18M6 6l12 12"/>',
+ edit:'<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4z"/>',
+ trash:'<path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>',
+ flame:'<path d="M12 22c4.4 0 7-2.8 7-6.5 0-4.8-4.2-6.6-4-11.5-3 1.5-5 4.5-5 7 0-1-.5-2.5-2-3.5-.3 2-1 3-1 5.5C7 17 7.6 22 12 22z"/>',
+ clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>',
+ play:'<path d="M6 4l14 8-14 8z"/>',
+ pause:'<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>',
+ bell:'<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
+ star:'<path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/>',
+ moon:'<path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/>',
+ sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+ dl:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>',
+ ul:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>',
+ zap:'<path d="M13 2 3 14h8l-1 8 11-14h-8z"/>',
+ chevL:'<path d="m15 18-6-6 6-6"/>', chevR:'<path d="m9 18 6-6-6-6"/>', chevD:'<path d="m6 9 6 6 6-6"/>',
+ send:'<path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/>',
+ target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/>',
+ user:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+ info:'<circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/>',
+ search:'<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
+ skip:'<path d="m5 4 10 8-10 8zM19 4v16"/>',
+ run:'<path d="M12 2 2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>'
+};
+const I=(n,s=16)=>`<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n]||''}</svg>`;
+
+/* ════════════════════════════ 3. STORAGE (IndexedDB + localStorage mirror) ════════════════════════════ */
+const Store=(()=>{
+  const DB='studyos', SKEY='studyos_state_v1';
+  let db=null, idbOK=false;
+  function openIDB(){
+    return new Promise(res=>{
+      try{
+        const r=indexedDB.open(DB,1);
+        r.onupgradeneeded=()=>r.result.createObjectStore('kv');
+        r.onsuccess=()=>{db=r.result;idbOK=true;res();};
+        r.onerror=()=>res();
+        setTimeout(()=>res(),1500);
+      }catch(e){res();}
+    });
+  }
+  const idbSet=v=>new Promise(res=>{if(!idbOK)return res();try{const t=db.transaction('kv','readwrite');t.objectStore('kv').put(v,'state');t.oncomplete=res;t.onerror=res;}catch(e){res();}});
+  const idbGet=()=>new Promise(res=>{if(!idbOK)return res(null);try{const t=db.transaction('kv','readonly');const q=t.objectStore('kv').get('state');q.onsuccess=()=>res(q.result||null);q.onerror=()=>res(null);}catch(e){res(null);}});
+  async function load(){
+    await openIDB();
+    let s=await idbGet();
+    if(!s){try{s=JSON.parse(localStorage.getItem(SKEY)||'null');}catch(e){s=null;}}
+    return s;
+  }
+  function saveSync(s){ // immediate lightweight mirror — used for critical writes
+    try{localStorage.setItem(SKEY,JSON.stringify(s));}catch(e){console.warn('localStorage full',e);}
+    idbSet(s);
+  }
+  return {load,saveSync,idbSet};
+})();
+
+/* ════════════════════════════ 4. STATE & DOMAIN ════════════════════════════ */
+const REV_INTERVALS=[1,3,7,14,30]; // days per confidence 1..5
+let state=null, saveTimer=null, chartRedraws=[], currentView='dash';
+const SUBJECT_COLORS=PALETTE;
+
+function freshState(){
+  return {
+    user:{name:'',goal:'',targetMin:180,onboarded:false,wake:'06:30',sleep:'23:00'},
+    subjects:[], tasks:[], routine:[], sessions:[], revisions:[], exams:[], assignments:[],
+    tests:[], mistakes:[], notes:[], goals:[], habits:[],
+    notifications:[], aiChats:[], aiConfig:{enabled:false,baseUrl:'',key:'',model:''},
+    settings:{theme:'light',sound:true,browserNotif:false,quiet:false,quietStart:'22:30',quietEnd:'07:30',reduceMotion:false,focusMin:25,breakMin:5},
+    meta:{created:todayISO(),notifSent:{},lastOpen:null}
+  };
+}
+function save(){clearTimeout(saveTimer);saveTimer=()=>{};saveTimer=setTimeout(()=>Store.saveSync(state),350);}
+function saveNow(){clearTimeout(saveTimer);Store.saveSync(state);}
+
+const subj=id=>state.subjects.find(s=>s.id===id);
+const subjName=id=>subj(id)?.name||'General';
+const subjColor=id=>subj(id)?.color||'#8f8a7a';
+const newSubject=name=>({id:uid(),name,color:SUBJECT_COLORS[state.subjects.length%SUBJECT_COLORS.length],chapters:[],hours:0});
+const PRIORITY={high:3,medium:2,low:1};
+const STATUS=['Not Started','In Progress','Completed','Partially Completed','Skipped','Overdue'];
+const statusBadge=st=>{
+  const map={'Not Started':'b-mut','In Progress':'b-info','Completed':'b-ok','Partially Completed':'b-warn','Skipped':'b-mut','Overdue':'b-danger'};
+  return `<span class="badge ${map[st]||'b-mut'}">${esc(st)}</span>`;
+};
+
+/* ---------- computed analytics (all from real data) ---------- */
+function sessionsOn(iso){return state.sessions.filter(s=>s.date===iso);}
+function minutesOn(iso){return sessionsOn(iso).reduce((a,s)=>a+(s.duration||0),0);}
+function lastNDays(n){const out=[];for(let i=n-1;i>=0;i--)out.push(addDays(todayISO(),-i));return out;}
+function taskStats(tasks=todayTasks()){
+  return {total:tasks.length,done:tasks.filter(t=>t.status==='Completed').length,
+    pending:tasks.filter(t=>['Not Started','In Progress','Partially Completed'].includes(t.status)).length,
+    overdue:tasks.filter(t=>t.status!=='Completed'&&t.status!=='Skipped'&&((t.date&&t.date<todayISO())||(t.deadline&&t.deadline<todayISO()))).length};
+}
+function todayTasks(){return state.tasks.filter(t=>t.date===todayISO());}
+function allOpenTasks(){return state.tasks.filter(t=>!['Completed','Skipped'].includes(t.status));}
+function overdueTasks(){return allOpenTasks().filter(t=>(t.date&&t.date<todayISO())||(t.deadline&&t.deadline<todayISO())).sort((a,b)=>(a.deadline||a.date||'9999')<(b.deadline||b.date||'9999')?-1:1);}
+function revisionsDue(){return state.revisions.filter(r=>r.due<=todayISO());}
+function upcomingDeadlines(){
+  const out=[];
+  state.tasks.forEach(t=>{if(t.deadline&&!['Completed','Skipped'].includes(t.status))out.push({date:t.deadline,type:'Task',title:t.title,ref:t});});
+  state.assignments.forEach(a=>{if(a.due&&a.progress<100)out.push({date:a.due,type:'Assignment',title:a.title,ref:a});});
+  state.exams.forEach(e=>{if(e.date>=todayISO())out.push({date:e.date,type:'Exam',title:e.name,ref:e});});
+  return out.sort((a,b)=>a.date<b.date?-1:1);
+}
+function streak(){
+  let n=0,d=todayISO();
+  const qualifies=iso=>minutesOn(iso)>=15;
+  if(!qualifies(d))d=addDays(d,-1); // today not yet earned doesn't break yesterday's streak
+  while(qualifies(d)&&n<3650){n++;d=addDays(d,-1);}
+  return n;
+}
+function weekTotals(weeksAgo=0){
+  const now=pd(todayISO()), dow=(now.getDay()+6)%7; // Monday start
+  const mon=addDays(todayISO(),-dow-weeksAgo*7);
+  let min=0;const bySubj={};let done=0,total=0;
+  for(let i=0;i<7;i++){const d=addDays(mon,i);min+=minutesOn(d);
+    sessionsOn(d).forEach(s=>bySubj[s.subjectId||'none']=(bySubj[s.subjectId||'none']||0)+s.duration);
+    const dt=state.tasks.filter(t=>t.date===d);total+=dt.length;done+=dt.filter(t=>t.status==='Completed').length;}
+  return {mon,min,bySubj,done,total};
+}
+function productivityScore(){
+  const t=todayISO(), tgt=state.user.targetMin||180, today=minutesOn(t);
+  const w=weekTotals();const comp=w.total?pct(w.done,w.total):0;
+  const focusAvg=state.sessions.length?state.sessions.slice(-20).reduce((a,s)=>a+(s.focus||3),0)/(Math.min(20,state.sessions.length)*5):0;
+  const att=Math.min(1,today/tgt);
+  return Math.round(att*40+comp/100*35+focusAvg*25);
+}
+function weakTopics(limit=8){
+  const score={};
+  state.revisions.forEach(r=>{if(r.confidence&&r.confidence<=2){const k=subjName(r.subjectId)+' · '+r.topic;score[k]=(score[k]||0)+3;}});
+  state.mistakes.forEach(m=>{const k=subjName(m.subjectId)+' · '+m.topic;score[k]=(score[k]||0)+2;});
+  state.tasks.forEach(t=>{if(t.status==='Skipped'&&t.topic){const k=subjName(t.subjectId)+' · '+t.topic;score[k]=(score[k]||0)+1;}});
+  return Object.entries(score).sort((a,b)=>b[1]-a[1]).slice(0,limit).map(([k,v])=>({name:k,weight:v}));
+}
+function subjectProgress(s){
+  let tot=0,done=0;
+  s.chapters.forEach(c=>c.topics.forEach(t=>{tot++;if(t.done)done++;}));
+  return pct(done,tot);
+}
+function confLabel(c){return['','Very low','Low','Okay','Good','Strong'][c]||'—';}
+
+/* ---------- revision engine ---------- */
+function scheduleRevision(subjectId,topic,confidence){
+  const due=addDays(todayISO(),REV_INTERVALS[Math.max(0,Math.min(4,confidence)-1)]);
+  let r=state.revisions.find(v=>v.subjectId===subjectId&&v.topic.toLowerCase()===topic.toLowerCase());
+  if(r){r.due=due;r.confidence=confidence;r.history.push({date:todayISO(),confidence});}
+  else state.revisions.push({id:uid(),subjectId,topic,due,confidence,history:[{date:todayISO(),confidence}]});
+  save();
+}
+function markTopicDone(s,ch,t,confidence){
+  t.done=true;
+  if(confidence)scheduleRevision(s.id,t.name,confidence);
+  save();
+}
+
+/* ---------- "what should I do now" engine ---------- */
+function recommendNow(){
+  const t=todayISO(), tgt=state.user.targetMin||180, left=Math.max(0,tgt-minutesOn(t));
+  const cands=[];
+  state.tasks.forEach(k=>{
+    if(['Completed','Skipped'].includes(k.status))return;
+    const od=(k.date&&k.date<t)?daysBetween(k.date,t):0;
+    const dd=k.deadline?daysBetween(t,k.deadline):99;
+    let sc=PRIORITY[k.priority]||2 + od*2.5;
+    sc=(PRIORITY[k.priority]||2)*2+od*2.5;
+    if(dd<=0)sc+=4; if(dd>=1&&dd<=3)sc+=2;
+    if(examNear(k.subjectId))sc+=3;
+    cands.push({kind:'task',title:k.title,subject:k.subjectId,topic:k.topic,est:k.est||45,min:Math.min(k.est||45,Math.max(25,left||45)),sc,obj:k,
+      why:[...(od?['overdue '+od+'d']:[]),...(dd<=0?['due today']:[]),...(examNear(k.subjectId)?['exam soon']:[]),...(k.priority==='high'?['high priority']:[])]});
+  });
+  state.revisions.forEach(r=>{
+    if(r.due>t)return;
+    let sc=2+(r.confidence<=2?3:0)+(examNear(r.subjectId)?2:0)+(r.due<t?1.5:0);
+    cands.push({kind:'rev',title:'Revise: '+r.topic,subject:r.subjectId,topic:r.topic,est:25,min:25,sc,obj:r,
+      why:[r.due<t?'revision overdue':'revision due today',...(r.confidence&&r.confidence<=2?['low confidence']:[]),...(examNear(r.subjectId)?['exam soon']:[])]});
+  });
+  if(!cands.length)return null;
+  cands.sort((a,b)=>b.sc-a.sc);
+  const c=cands[0];
+  const reasons=c.why.length?c.why:['fits your remaining study target'];
+  return {...c,reasons,targetLeft:left};
+}
+function examNear(subjectId){
+  return state.exams.some(e=>e.subjectId===subjectId&&e.date>=todayISO()&&daysBetween(todayISO(),e.date)<=14);
+}
+
+/* ---------- outstanding center ---------- */
+function outstandingItems(){
+  const out=[];
+  overdueTasks().forEach(t=>out.push({kind:'Task',title:t.title,subject:t.subjectId,date:t.date||t.deadline,deadline:t.deadline||t.date,priority:t.priority,est:t.est||45,obj:t,
+    reason:t.date<todayISO()&&t.date!==t.deadline?'Scheduled '+(daysBetween(t.date,todayISO()))+' day(s) ago, not completed':'Past its deadline'}));
+  state.assignments.forEach(a=>{if(a.due<a!==false&&a.due<todayISO()&&a.progress<100)out.push({kind:'Assignment',title:a.title,subject:a.subjectId,date:a.due,deadline:a.due,priority:a.priority,est:60,obj:a,reason:'Submission date has passed'});});
+  state.revisions.forEach(r=>{if(r.due<todayISO())out.push({kind:'Revision',title:'Revise: '+r.topic,subject:r.subjectId,date:r.due,deadline:r.due,priority:r.confidence<=2?'high':'medium',est:25,obj:r,reason:'Spaced-repetition date passed'});});
+  return out.sort((a,b)=>(b.priority==='high')-(a.priority==='high')||(a.deadline<b.deadline?-1:1));
+}
+function catchUpPlan(){
+  const items=outstandingItems();
+  const tgt=state.user.targetMin||180;
+  const capToday=Math.max(60,tgt-minutesOn(todayISO())), capTmr=tgt;
+  const today=[],tomorrow=[],later=[];let c1=capToday,c2=capTmr;
+  items.forEach(it=>{
+    if(it.est<=c1){today.push(it);c1-=it.est;}
+    else if(it.est<=c2){tomorrow.push(it);c2-=it.est;}
+    else later.push(it);
+  });
+  return {items,today,tomorrow,later,capToday:capToday-c1,capTmr:capTmr-c2};
+}
+
+/* ---------- routine helpers ---------- */
+function routineFor(dateISO){
+  const dow=pd(dateISO).getDay();
+  return state.routine.filter(b=>b.repeat==='daily'||(b.repeat==='weekly'&&(b.days||[]).includes(dow))).sort((a,b)=>toMin(a.start)-toMin(b.start));
+}
+function routineGaps(blocks){
+  const gaps=[];let prev=toMin(state.user.wake)*1||360;
+  const wake=Math.min(...blocks.map(b=>toMin(b.start)),toMin(state.user.wake));
+  const sleep=Math.max(...blocks.map(b=>toMin(b.end)),toMin(state.user.sleep));
+  let cursor=wake;
+  blocks.forEach(b=>{const s=toMin(b.start);if(s-cursor>=45)gaps.push({start:cursor,end:s});cursor=Math.max(cursor,toMin(b.end));});
+  if(sleep-cursor>=45)gaps.push({start:cursor,end:sleep});
+  return gaps;
+}
+const CAT_COLORS={study:'var(--accent)',class:'var(--info)',break:'var(--amber)',meal:'var(--amber)',exercise:'#6b5b8f',personal:'#8f3f62',free:'#8f8a7a'};
+
+/* ════════════════════════════ 5. UI KIT ════════════════════════════ */
+function toast(msg,type='info'){
+  const t=document.createElement('div');t.className='toast '+type;
+  t.innerHTML=I(type==='ok'?'check':type==='bad'?'x':type==='warn'?'out':'info')+'<span>'+esc(msg)+'</span>';
+  $('#toasts').appendChild(t);
+  setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .3s';setTimeout(()=>t.remove(),320);},4200);
+}
+let modalStack=[];
+function modal(title,bodyHTML,footerHTML='',opts={}){
+  const back=document.createElement('div');back.className='mback';
+  back.innerHTML=`<div class="modal ${opts.lg?'lg':''}" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+    <div class="modal-h"><h3>${esc(title)}</h3><button class="icon-btn" data-close aria-label="Close">${I('x',18)}</button></div>
+    <div class="modal-b">${bodyHTML}</div>${footerHTML?`<div class="modal-f">${footerHTML}</div>`:''}</div>`;
+  document.body.appendChild(back);
+  back.addEventListener('mousedown',e=>{if(e.target===back&&!opts.static)close();});
+  back.querySelector('[data-close]').onclick=close;
+  modalStack.push({el:back,onClose:opts.onClose});
+  const f=back.querySelector('input,select,textarea,button:not([data-close])');if(f)setTimeout(()=>f.focus(),60);
+  function close(){back.remove();modalStack=modalStack.filter(m=>m.el!==back);opts.onClose&&opts.onClose();}
+  return {el:back,close};
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&modalStack.length){const m=modalStack.pop();m.el.remove();modalStack=modalStack.filter(x=>x!==m);}
+  if(e.key==='/'&&!/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)){e.preventDefault();$('#globalSearch').focus();}
+});
+function confirmModal(msg,onYes,{danger=true,label='Confirm'}={}){
+  const m=modal(label,`<p style="font-size:14px">${msg}</p>`,
+    `<button class="btn ghost" data-no>Cancel</button><button class="btn ${danger?'danger':'pri'}" data-yes>${label}</button>`);
+  m.el.querySelector('[data-no]').onclick=m.close;
+  m.el.querySelector('[data-yes]').onclick=()=>{m.close();onYes();};
+}
+function fieldHTML(f){
+  const v=f.val??'', req=f.req?' required':'', half=f.half===false?'full':'';
+  let inner='';
+  switch(f.t){
+    case 'select':inner=`<select name="${f.k}"${req}>${(f.o||[]).map(o=>{const ov=o.v??o,ol=o.l??o;return `<option value="${esc(ov)}"${String(ov)===String(v)?' selected':''}>${esc(ol)}</option>`;}).join('')}</select>`;break;
+    case 'textarea':inner=`<textarea name="${f.k}"${req} placeholder="${esc(f.ph||'')}">${esc(v)}</textarea>`;break;
+    case 'range':inner=`<div class="range-wrap"><input type="range" name="${f.k}" min="${f.min||1}" max="${f.max||5}" value="${v||3}" oninput="this.nextElementSibling.textContent=this.value"><span class="range-v">${v||3}</span></div>`;break;
+    case 'checkbox':return `<div class="fld ${half}"><label style="display:flex;gap:8px;align-items:center;cursor:pointer"><input type="checkbox" name="${f.k}" ${v?'checked':''} style="width:auto"> ${esc(f.label)}</label></div>`;
+    default:inner=`<input type="${f.t||'text'}" name="${f.k}" value="${esc(v)}"${req} ${f.min!==undefined?`min="${f.min}"`:''} ${f.step?`step="${f.step}"`:''} placeholder="${esc(f.ph||'')}>`.replace('>"','">');
+  }
+  return `<div class="fld ${half}"><label>${esc(f.label)}${req?' *':''}</label>${inner}${f.hint?`<div class="hint">${f.hint}</div>`:''}</div>`;
+}
+function formModal(title,fields,onSubmit,submitLabel='Save'){
+  const body=`<form id="fform">${wrapFields(fields)}</form>`;
+  const m=modal(title,body,`<button class="btn ghost" data-cancel>Cancel</button><button class="btn pri" data-ok>${I('check')} ${submitLabel}</button>`);
+  const form=m.el.querySelector('#fform');
+  m.el.querySelector('[data-cancel]').onclick=m.close;
+  m.el.querySelector('[data-ok]').onclick=()=>{
+    if(!form.reportValidity())return;
+    const fd=new FormData(form),vals={};
+    fields.forEach(f=>{
+      if(f.t==='checkbox'){vals[f.k]=form.elements[f.k].checked;return;}
+      let v=fd.get(f.k);if(v===null)return;
+      if(f.t==='number')v=v===''?null:Number(v);
+      vals[f.k]=typeof v==='string'?v.trim():v;
+    });
+    onSubmit(vals,m);
+  };
+  form.addEventListener('submit',e=>{e.preventDefault();m.el.querySelector('[data-ok]').click();});
+  return m;
+}
+function wrapFields(fields){
+  let html='',pair=[];
+  fields.forEach(f=>{
+    const full=f.half===false||f.t==='textarea'||f.t==='range';
+    if(full){if(pair.length){html+=`<div class="frow">${pair.join('')}</div>`;pair=[];}html+=`<div class="frow"><div class="full">${fieldHTML(f)}</div></div>`;}
+    else{pair.push(fieldHTML(f));if(pair.length===2){html+=`<div class="frow">${pair.join('')}</div>`;pair=[];}}
+  });
+  if(pair.length)html+=`<div class="frow">${pair[0]}</div>`;
+  return html;
+}
+function infoModal(title,html){return modal(title,html,'<button class="btn pri" data-x>Close</button>',{lg:html.length>2200}).also?0:(()=>{const last=modalStack[modalStack.length-1];last.el.querySelector('[data-x]').onclick=last.el.querySelector('[data-close]').onclick;})();}
+
+/* ════════════════════════════ 6. LIGHTWEIGHT CHARTS (canvas) ════════════════════════════ */
+function prepCanvas(cv){
+  const dpr=window.devicePixelRatio||1,w=cv.clientWidth||300,h=cv.clientHeight||150;
+  cv.width=w*dpr;cv.height=h*dpr;
+  const ctx=cv.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);
+  return {ctx,w,h};
+}
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+function ringChart(cv,p,color){
+  const {ctx,w,h}=prepCanvas(cv);const cx=w/2,cy=h/2,r=Math.min(w,h)/2-8,lw=11;
+  ctx.lineWidth=lw;ctx.lineCap='round';
+  ctx.strokeStyle=css('--panel2');ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();
+  ctx.strokeStyle=color||css('--accent');
+  ctx.beginPath();ctx.arc(cx,cy,r,-Math.PI/2,-Math.PI/2+Math.PI*2*Math.min(1,p/100));ctx.stroke();
+}
+function barChart(cv,data,{color,label}={}){
+  const {ctx,w,h}=prepCanvas(cv);
+  const padL=30,padB=20,padT=8, iw=w-padL-6, ih=h-padT-padB;
+  const max=Math.max(1,...data.map(d=>d.v));
+  ctx.strokeStyle=css('--line');ctx.fillStyle=css('--ink3');ctx.font='10px Instrument Sans';ctx.lineWidth=1;
+  [0,.5,1].forEach(f=>{const y=padT+ih*(1-f);ctx.beginPath();ctx.moveTo(padL,y);ctx.lineTo(w-4,y);ctx.stroke();ctx.fillText(f?Math.round(max*f)+'':max+'',4,y+3);});
+  const bw=Math.min(26,iw/data.length*0.62), step=iw/data.length;
+  data.forEach((d,i)=>{
+    const bh=ih*(d.v/max), x=padL+step*i+(step-bw)/2, y=padT+ih-bh;
+    ctx.fillStyle=d.c||color||css('--accent');
+    if(d.v>0){ctx.beginPath();ctx.roundRect(x,y,bw,Math.max(2,bh),4);ctx.fill();}
+    else{ctx.fillStyle=css('--line');ctx.fillRect(x,padT+ih-2,bw,2);}
+    ctx.fillStyle=css('--ink3');ctx.textAlign='center';
+    if(data.length<=16||i%2===0)ctx.fillText(d.l,padL+step*i+step/2,h-6);
+    ctx.textAlign='left';
+  });
+}
+function lineChart(cv,data,{color,min=0,max}={}){
+  const {ctx,w,h}=prepCanvas(cv);
+  const padL=30,padB=18,padT=8,iw=w-padL-8,ih=h-padT-padB;
+  const mx=max??Math.max(1,...data.map(d=>d.v)),mn=min;
+  ctx.strokeStyle=css('--line');ctx.fillStyle=css('--ink3');ctx.font='10px Instrument Sans';
+  [0,.5,1].forEach(f=>{const y=padT+ih*(1-f);ctx.beginPath();ctx.moveTo(padL,y);ctx.lineTo(w-4,y);ctx.stroke();ctx.fillText(String(Math.round(mn+(mx-mn)*f)),4,y+3);});
+  if(data.length<2){ctx.fillText('not enough data yet',padL+10,padT+ih/2);return;}
+  const X=i=>padL+iw*(i/(data.length-1)), Y=v=>padT+ih*(1-(v-mn)/(mx-mn));
+  ctx.strokeStyle=color||css('--accent');ctx.lineWidth=2;ctx.lineJoin='round';ctx.beginPath();
+  data.forEach((d,i)=>i?ctx.lineTo(X(i),Y(d.v)):ctx.moveTo(X(0),Y(d.v)));ctx.stroke();
+  ctx.lineTo(X(data.length-1),padT+ih);ctx.lineTo(X(0),padT+ih);ctx.closePath();
+  ctx.fillStyle=color||css('--accent');ctx.globalAlpha=.09;ctx.fill();ctx.globalAlpha=1;
+  ctx.fillStyle=color||css('--accent');
+  data.forEach((d,i)=>{ctx.beginPath();ctx.arc(X(i),Y(d.v),2.5,0,7);ctx.fill();});
+}
+function hbar(label,value,max,color){
+  return `<div style="margin-bottom:9px"><div style="display:flex;justify-content:space-between;font-size:12.5px;font-weight:600;margin-bottom:4px"><span>${esc(label)}</span><span class="num" style="color:var(--ink3)">${value}${max>0&&value<=max?'/'+max:''}</span></div><div class="pbar"><i style="width:${pct(value,max)}%;background:${color||'var(--accent)'}"></i></div></div>`;
+}
+const redrawCharts=debounce(()=>chartRedraws.forEach(f=>f()),180);
+
+/* ════════════════════════════ 7. AI SERVICE (honest: local-first, optional API) ════════════════════════════ */
+const AIService={
+  isConfigured(){return !!(state.aiConfig.enabled&&state.aiConfig.baseUrl&&state.aiConfig.key);},
+  /* Builds a compact context of the user's real data for a prompt */
+  context(){
+    const t=todayISO();
+    return {
+      today:t,weekday:WEEKDAYS[pd(t).getDay()],targetMinutes:state.user.targetMin,studiedToday:minutesOn(t),
+      openTasks:state.tasks.filter(x=>!['Completed','Skipped'].includes(x.status)).slice(0,25).map(x=>({title:x.title,subject:subjName(x.subjectId),date:x.date,deadline:x.deadline,priority:x.priority,status:x.status})),
+      revisionsDue:revisionsDue().slice(0,12).map(r=>({subject:subjName(r.subjectId),topic:r.topic,confidence:r.confidence})),
+      exams:state.exams.map(e=>({name:e.name,subject:subjName(e.subjectId),date:e.date,daysLeft:e.date>=t?daysBetween(t,e.date):0,prep:e.prep})),
+      assignments:state.assignments.filter(a=>a.progress<100).slice(0,10).map(a=>({title:a.title,due:a.due})),
+      subjects:state.subjects.map(s=>({name:s.name,progress:subjectProgress(s)})),
+      recentTests:state.tests.slice(-8).map(x=>({subject:subjName(x.subjectId),pct:Math.round(x.obtained/x.total*100)})),
+      weakTopics:weakTopics(6).map(w=>w.name)
+    };
+  },
+  async callAPI(prompt){
+    const c=state.aiConfig;
+    const res=await fetch(c.baseUrl.replace(/\/$/,'')+'/chat/completions',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+c.key},
+      body:JSON.stringify({model:c.model||'gpt-4o-mini',messages:[
+        {role:'system',content:'You are the built-in study assistant of AI StudyOS. Be concise, practical and encouraging. Never shame the user. Use the provided JSON study context to ground your answer.\nSTUDY CONTEXT: '+JSON.stringify(this.context())},
+        ...state.aiChats.slice(-6).map(m=>({role:m.role==='user'?'user':'assistant',content:m.text})),
+        {role:'user',content:prompt}]})
+    });
+    if(!res.ok)throw new Error('API '+res.status);
+    const j=await res.json();
+    return (j.choices&&j.choices[0].message.content)||'(empty response)';
+  },
+  /* Each named capability: API when configured, deterministic local logic otherwise */
+  async generateDailyPlan(){if(this.isConfigured()){try{return await this.callAPI('Create a realistic study plan for today based on my context. Format as a short list.');}catch(e){return '(API unreachable — using offline planner)\n\n'+this.localDailyPlan();}}return this.localDailyPlan();},
+  async analyzeProgress(){if(this.isConfigured()){try{return await this.callAPI('Analyze my study progress and give 3 concrete suggestions.');}catch(e){}}return this.localProgressAnalysis();},
+  async recommendNextTask(){return this.localRecommend();},
+  async createExamPlan(exam){if(this.isConfigured()){try{return await this.callAPI(`Create an exam preparation plan for "${exam.name}" (${subjName(exam.subjectId)}) on ${exam.date}, preparation ${exam.prep}%.`);}catch(e){}}return this.localExamPlan(exam);},
+  async generateQuiz(topic){if(this.isConfigured()){try{return await this.callAPI('Generate 5 practice questions about: '+topic);}catch(e){}}return this.localQuiz(topic);},
+  async generateFlashcards(topic){if(this.isConfigured()){try{return await this.callAPI('Create 6 flashcards (Q then A) about: '+topic);}catch(e){}}return this.localFlashcards(topic);},
+  async explainTopic(topic){if(this.isConfigured()){try{return await this.callAPI('Explain this topic simply with a study approach: '+topic);}catch(e){}}return this.localExplain(topic);},
+  async analyzeMistakes(){return this.localMistakeAnalysis();},
+  async reviewWeekly(){return this.localWeeklyReview();},
+
+  /* ---- local deterministic engine (works fully offline, uses real data) ---- */
+  localRecommend(){
+    const r=recommendNow();
+    if(!r)return 'Your schedule is clear right now. Add a task or start a focus session to build momentum — even 25 minutes counts.';
+    return `Recommended now:\n\n${r.kind==='rev'?'📖':'📚'} ${subjName(r.subject)} — ${r.title}\n⏱ About ${r.min} minutes\n${r.why.includes('overdue')||r.why.includes('due today')?'🔥 High priority\n':''}\nWhy: ${r.why.join(' · ')}.${r.targetLeft>0?` You still have ${fmtMin(r.targetLeft)} of today's target left.`:''}\n\nOpen the Dashboard and press "Start Now" to begin a focus session.`;
+  },
+  localDailyPlan(){
+    const t=todayISO(),gaps=routineGaps(routineFor(t)),tasks=allOpenTasks().filter(x=>!x.deadline||x.deadline>=t)
+      .sort((a,b)=>(PRIORITY[b.priority]||2)-(PRIORITY[a.priority]||2)||(a.date||'9')<(b.date||'9')?-1:1);
+    let out=`Here's a plan for today (${fmtDate(t)}):\n`,slot=gaps[0],i=0;
+    const revs=revisionsDue().slice(0,2);
+    if(revs.length)out+=`1. First, clear ${revs.length} due revision${revs.length>1?'s':''} (${revs.map(r=>r.topic).join(', ')}) — ~25 min each.\n`;
+    tasks.slice(0,4).forEach((k,idx)=>{out+=`${revs.length+idx+1}. ${subjName(k.subjectId)} — ${k.title} (~${k.est||45} min${k.deadline&&k.deadline<=t?', deadline today':''}).\n`;});
+    if(gaps.length)out+=`\nBest free slots: ${gaps.slice(0,2).map(g=>fmtHM(g.start)+'–'+fmtHM(g.end)).join(' and ')}.`;
+    if(!tasks.length&&!revs.length)out+='You have nothing pending — great time for practice or getting ahead on a weak topic.';
+    return out;
+  },
+  localProgressAnalysis(){
+    const t=minutesOn(todayISO()),tgt=state.user.targetMin,ts=taskStats(),w=weekTotals();
+    const comp=w.total?pct(w.done,w.total):0, prod=productivityScore();
+    let out=`Quick read on your progress:\n• Today: ${fmtMin(t)} of ${fmtMin(tgt)} target (${pct(t,tgt)}%)\n• This week: ${fmtMin(w.min)} studied, ${comp}% task completion\n• Open items: ${ts.pending} pending, ${ts.overdue} overdue, ${revisionsDue().length} revisions due\n• Productivity score: ${prod}/100\n\n`;
+    const tips=[];
+    if(t<tgt*.5&&nowMin()>toMin('18:00'))tips.push('You are behind today\'s target — a single 45-minute focus session now would close most of the gap.');
+    if(ts.overdue>2)tips.push(`${ts.overdue} overdue tasks are piling up. Open the Outstanding Center and run the Catch-Up Plan.`);
+    if(comp<50&&w.total>3)tips.push('Completion is under 50% — try planning ~20% fewer tasks per day and finishing them fully.');
+    if(!state.sessions.length)tips.push('No sessions recorded yet. Log your first Focus session and the analytics will start working.');
+    if(!tips.length)tips.push('You\'re on track. Keep the streak alive with at least one session today.');
+    return out+tips.map(s=>'• '+s).join('\n');
+  },
+  localExamPlan(exam){
+    const t=todayISO(),days=Math.max(1,daysBetween(t,exam.date));
+    const chapters=(exam.chapters||[]).filter(Boolean);
+    const perDay=Math.max(1,Math.ceil(chapters.length/Math.max(1,days-2)));
+    let out=`Exam plan for ${exam.name} (${days} days left, ${exam.prep}% prepared):\n\n`,d=0;
+    for(let i=0;i<chapters.length;i+=perDay){
+      out+=`Day ${++d} (${fmtDate(addDays(t,d-1))}): study ${chapters.slice(i,i+perDay).join(', ')}.\n`;
+    }
+    if(days-d>=2)out+=`Day ${d+1}: full revision of all chapters + weak topics.\nDay ${d+2}: mock test under exam conditions.\n`;
+    out+=`\nTip: ${Math.round((100-exam.prep)/days*10)/10}% of the syllabus-equivalent per day keeps this comfortable.`;
+    return out;
+  },
+  localQuiz(topic){return `Practice set: ${topic}\n\n1. Define the core concept of ${topic} in one or two sentences.\n2. Give a worked example where ${topic} applies, step by step.\n3. What is the most common mistake students make with ${topic}?\n4. How does ${topic} connect to the chapter it belongs to?\n5. Explain ${topic} as if teaching a friend — out loud, without notes.\n\n(Connect your own AI API in Settings for generated questions specific to your materials.)`;},
+  localFlashcards(topic){return `Flashcards: ${topic}\n\n1. Q: What is ${topic}? — A: (write your own definition first, then verify)\n2. Q: Key formula / rule? — A: (write it from memory)\n3. Q: One worked example? — A: (solve, then check)\n4. Q: Common trap? — A: (note the mistake you made before, if any)\n5. Q: Where does it appear in past tests? — A: (link a test from your Test Tracker)\n6. Q: Confidence 1–5? — A: rate honestly; low ratings get scheduled for earlier revision automatically.`;},
+  localExplain(topic){const wk=weakTopics(3).find(w=>w.name.toLowerCase().includes(String(topic).toLowerCase().split(' ')[0]));
+    return `Study approach for ${topic}:\n\n1. Skim the section headings first to build a mental map (10 min).\n2. Read actively — close the book after each subsection and write one sentence from memory.\n3. Solve 2–3 basic problems before touching harder ones.\n4. End with a 5-minute self-explanation out loud.\n\nWhen done, mark the topic complete and rate your confidence — StudyOS will schedule spaced revision automatically.${wk?`\n\nNote: this topic appeared in your weak list, so plan one extra revision within 3 days.`:''}`;},
+  localMistakeAnalysis(){
+    if(!state.mistakes.length)return 'Your Mistake Book is empty. When you record mistakes, I\'ll find repeated patterns and link them to revision.';
+    const byTopic={};state.mistakes.forEach(m=>{const k=subjName(m.subjectId)+' · '+m.topic;byTopic[k]=byTopic[k]||[];byTopic[k].push(m);});
+    const rep=Object.entries(byTopic).filter(([,v])=>v.length>=2).sort((a,b)=>b[1].length-a[1].length);
+    let out=`You've logged ${state.mistakes.length} mistakes across ${Object.keys(byTopic).length} topics.\n\n`;
+    if(rep.length){out+='Repeated patterns (fix these first):\n';rep.slice(0,4).forEach(([k,v])=>out+=`• ${k} — ${v.length} mistakes (${[...new Set(v.map(m=>m.type))].join(', ')})\n`);out+='\nSuggestion: schedule a focused practice block on the top topic and re-attempt each wrong question without notes.';}
+    else out+='No topic repeats yet — that\'s healthy. Keep logging and patterns will surface automatically.';
+    return out;
+  },
+  localWeeklyReview(){
+    const w=weekTotals(),prev=weekTotals(1);
+    const entries=Object.entries(w.bySubj).sort((a,b)=>b[1]-a[1]);
+    let out=`Weekly review (${fmtDate(w.mon)} – ${fmtDate(addDays(w.mon,6))}):\n\n• Total study time: ${fmtMin(w.min)} (last week: ${fmtMin(prev.min)})\n`;
+    if(entries.length){out+=`• Most studied: ${subjName(entries[0][0])} (${fmtMin(entries[0][1])})\n• Least studied: ${subjName(entries[entries.length-1][0])} (${fmtMin(entries[entries.length-1][1])})\n`;}
+    out+=`• Tasks: ${w.done}/${w.total} completed\n`;
+    const tw=state.tests.filter(x=>x.date>=w.mon&&x.date<=addDays(w.mon,6));
+    if(tw.length)out+=`• Tests: avg ${Math.round(tw.reduce((a,x)=>a+x.obtained/x.total,0)/tw.length*100)}%\n`;
+    out+=`• Outstanding right now: ${outstandingItems().length} items\n\n`;
+    const rec=[];
+    if(w.total&&w.done/w.total<0.6)rec.push('Plan ~20% fewer daily tasks and protect completion rate.');
+    if(outstandingItems().length>3)rec.push('Run the Catch-Up Plan to clear overdue work before adding anything new.');
+    if(entries.length>1&&entries[entries.length-1][1]<entries[0][1]*0.3)rec.push(`${subjName(entries[entries.length-1][0])} is being neglected — give it one dedicated block next week.`);
+    if(w.min<prev.min*0.7&&prev.min>0)rec.push('Study time dropped vs last week — set a fixed daily minimum and use Focus Mode to protect it.');
+    if(!rec.length)rec.push('Solid week. Next week: keep the rhythm and add one spaced-revision pass on low-confidence topics.');
+    out+='What to change next week:\n'+rec.map(r=>'• '+r).join('\n');
+    return out;
+  },
+  /* chat router — intent matching on real data */
+  async respond(text){
+    const t=text.toLowerCase();
+    const tryAPI=async prompt=>{if(!this.isConfigured())return null;try{return await this.callAPI(prompt);}catch(e){return '(API unreachable — offline assistant used your local data instead)\n\n';}};
+    const m=[
+      [/what should i (do|study)|next task|now\??$/,()=>this.localRecommend()],
+      [/plan (for )?today|make.*(day|today)/,()=>this.localDailyPlan()],
+      [/missed|behind|catch.?up|didn'?t finish|unfinished|reschedule/,()=>{const p=catchUpPlan();let o=p.items.length?`You have ${p.items.length} outstanding item(s). Recovery plan:\n\nToday (${fmtMin(p.capToday)}): ${p.today.length?p.today.map(i=>i.title).join('; '):'keep light'}\nTomorrow (${fmtMin(p.capTmr)}): ${p.tomorrow.length?p.tomorrow.map(i=>i.title).join('; '):'nothing forced'}\n${p.later.length?'Later: '+p.later.map(i=>i.title).join('; '):''}\n\nOpen the Outstanding Center to apply this plan with one tap.`:'Nothing is outstanding — you\'re fully caught up. Nice.';return o;}],
+      [/exam.*plan|prepare.*exam|exam in/,()=>{const e=state.exams.slice().sort((a,b)=>a.date<b.date?-1:1).find(x=>x.date>=todayISO());return e?this.localExamPlan(e):'No exams saved yet. Add one in the Exams view and I\'ll build a day-by-day plan.';}],
+      [/weak|struggl|bad at/,()=>{const w=weakTopics(6);return w.length?'Based on low confidence ratings, mistakes and skipped tasks, your weakest areas are:\n'+w.map(x=>'• '+x.name).join('\n')+'\n\nPick the top one for your next session — low-confidence topics get priority in revision scheduling.':'No clear weak spots yet. They\'ll appear here as you log tests, mistakes and confidence ratings.';}],
+      [/revise|revision/,()=>{const r=revisionsDue();return r.length?'Due for revision today:\n'+r.map(x=>`• ${subjName(x.subjectId)} — ${x.topic} (confidence: ${confLabel(x.confidence)})`).join('\n')+'\n\nFind them in the Revision view with one-tap review.':'No revisions due today. New ones are scheduled automatically when you complete topics.';}],
+      [/how much.*studied|study (this|last) (week|time)|hours/,()=>{const w=weekTotals();return `This week: ${fmtMin(w.min)} across ${state.sessions.filter(s=>s.date>=w.mon).length} sessions (daily avg ${fmtMin(w.min/7)}). Today so far: ${fmtMin(minutesOn(todayISO()))}. All-time: ${fmtMin(state.sessions.reduce((a,s)=>a+s.duration,0))}.`;}],
+      [/why.*progress low|improve|better/,()=>this.localProgressAnalysis()],
+      [/test me|quiz|practice question/,()=>this.localQuiz(extractTopic(text))],
+      [/flashcard/,()=>this.localFlashcards(extractTopic(text))],
+      [/explain|how do i (study|learn)/,()=>this.localExplain(extractTopic(text))],
+      [/mistake/,()=>this.localMistakeAnalysis()],
+      [/week.*review|review.*week/,()=>this.localWeeklyReview()],
+      [/3[- ]?hour|focused (study )?plan/,()=>`A 3-hour focused block, structured:\n\n• 0:00–0:50 — Hardest task first (${allOpenTasks()[0]?subjName(allOpenTasks()[0].subjectId)+' — '+allOpenTasks()[0].title:'your top priority'})\n• 0:50–1:00 — Break, move around\n• 1:00–1:45 — Second task or practice problems\n• 1:45–1:55 — Break\n• 1:55–2:40 — Revision of today's due topics\n• 2:40–3:00 — Quick recap + plan tomorrow\n\nUse Focus Mode with 50-minute timers.`],
+    ];
+    for(const[re,fn]of m){if(re.test(t)){const local=await fn();const pre=await tryAPI(text);return (pre||'')+local;}}
+    const pre=await tryAPI(text);
+    if(pre)return pre;
+    return `I'm running in offline mode using your local data — I can help with: "what should I study now", "plan my day", "I'm behind", "which subjects am I weak in", "what should I revise", "how much did I study this week", exam plans, quizzes, flashcards and weekly reviews.\n\nYou asked: "${text}"\n\nTip: connect your own AI API in Settings → AI Assistant for open-ended answers (your key stays in this browser).`;
+  }
+};
+const fmtHM=m=>pad(Math.floor(m/60))+':'+pad(m%60);
+function extractTopic(text){const m2=text.match(/(?:on|about|topic|explain|quiz me on|test me on)\s+(.+)/i);return m2?m2[1].replace(/[?.!]+$/,''):(allOpenTasks()[0]?.topic||allOpenTasks()[0]?.title||'your current topic');}
+
+/* ════════════════════════════ 8. NOTIFICATIONS ════════════════════════════ */
+function pushNotif(title,body,icon='bell',key=null){
+  const today=todayISO();
+  if(key){const k=key+':'+today;if(state.meta.notSent[k])return;state.meta.notSent[k]=1;save();}
+  const n={id:uid(),title,body,icon,when:Date.now(),read:false};
+  state.notifications.unshift(n);
+  if(state.notifications.length>60)state.notifications.length=60;
+  save();updateBell();
+  const quiet=state.settings.quiet&&inQuietHours();
+  if(!quiet){toast(title,'info');beep();browserNotify(title,body);}
+}
+function inQuietHours(){
+  const c=nowMin(),a=toMin(state.settings.quietStart),b=toMin(state.settings.quietEnd);
+  return a<b?(c>=a&&c<b):(c>=a||c<b);
+}
+function browserNotify(title,body){
+  if(state.settings.browserNotif&&'Notification'in window&&Notification.permission==='granted'){
+    try{new Notification(title,{body});}catch(e){}
+  }
+}
+let AC=null;
+function beep(){
+  if(!state.settings.sound)return;
+  try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();
+    [[880,0],[1175,.18]].forEach(([f,d])=>{const o=AC.createOscillator(),g=AC.createGain();o.connect(g);g.connect(AC.destination);
+    o.frequency.value=f;g.gain.setValueAtTime(.001,AC.currentTime+d);g.gain.exponentialRampToValueAtTime(.07,AC.currentTime+d+.02);g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d+.25);
+    o.start(AC.currentTime+d);o.stop(AC.currentTime+d+.3);});
+  }catch(e){}
+}
+setInterval(()=>{ // smart checks — deduped per day via notifSent keys, no spam
+  if(!state||!state.user.onboarded)return;
+  const t=todayISO();
+  // session starting in ~10 min
+  routineFor(t).forEach(b=>{
+    if(!['study','class'].includes(b.category))return;
+    const s=toMin(b.start);if(s-nowMin()===10||s-nowMin()===9)pushNotif(`${b.title} starts in 10 minutes`,b.subjectId?subjName(b.subjectId):'Scheduled block','clock','blk'+b.id);
+  });
+  // revision due (morning once)
+  if(nowMin()>=8*60&&revisionsDue().length)pushNotif('Revision due today',revisionsDue().length+' topic(s) awaiting review','repeat','revdue');
+  // assignment deadline <24h
+  state.assignments.forEach(a=>{if(a.due&&!a.notified&&a.progress<100&&daysBetween(t,a.due)===0&&a.due>=t)pushNotif('Assignment due today',a.title,'assign','asg'+a.id);});
+  // exam <3 days
+  state.exams.forEach(e=>{if(e.date>=t&&daysBetween(t,e.date)<=3&&daysBetween(t,e.date)>=0)pushNotif('Exam approaching',`${e.name} in ${daysBetween(t,e.date)} day(s)`,'exam','exm'+e.id);});
+  // streak at risk
+  if(nowMin()>=18*60&&minutesOn(t)===0&&streak()>0)pushNotif('Your streak is at risk',`No study time logged today — ${streak()} day streak on the line`,'flame','streak');
+  // outstanding reminder
+  const od=outstandingItems().length;
+  if(nowMin()>=10*60&&od>0)pushNotif('Outstanding work',od+' unfinished item(s) carried over','out','outc');
+},45000);
+function updateBell(){
+  const un=state.notifications.filter(n=>!n.read).length;
+  const d=$('#bellDot');d.style.display=un?'grid':'none';d.textContent=un>9?'9+':un;
+}
+function renderNotifPanel(){
+  const p=$('#npanel');
+  p.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;padding:13px 16px;border-bottom:1px solid var(--line)"><h3 style="font-size:15px">Notifications</h3><button class="btn ghost sm" data-act="clearNotifs">Clear all</button></div>`+
+  (state.notifications.length?state.notifications.map(n=>`<div class="nitem ${n.read?'':'unread'}"><div class="ni" style="background:var(--accent-soft);color:var(--accent)">${I(n.icon||'bell',15)}</div><div><div>${esc(n.title)}</div><div style="color:var(--ink2)">${esc(n.body)}</div><div class="when">${timeAgo(n.when)}</div></div></div>`).join(''):'<div class="empty">'+I('bell',28)+'<br>No notifications yet</div>');
+}
+function timeAgo(ts){const s=Math.floor((Date.now()-ts)/1000);if(s<60)return'just now';if(s<3600)return Math.floor(s/60)+'m ago';if(s<86400)return Math.floor(s/3600)+'h ago';return Math.floor(s/86400)+'d ago';}
+
+/* ════════════════════════════ 9. VIEWS ════════════════════════════ */
+const VIEWS={
+  dash:{label:'Dashboard',icon:'dash',sec:'main'},
+  planner:{label:'Study Planner',icon:'plan',sec:'main'},
+  routine:{label:'Daily Routine',icon:'routine',sec:'main'},
+  outstanding:{label:'Outstanding',icon:'out',sec:'main'},
+  calendar:{label:'Calendar',icon:'cal',sec:'main'},
+  subjects:{label:'Subjects',icon:'book',sec:'main'},
+  exams:{label:'Exams',icon:'exam',sec:'main'},
+  assignments:{label:'Assignments',icon:'assign',sec:'main'},
+  focus:{label:'Focus Mode',icon:'focus',sec:'main'},
+  revision:{label:'Revision',icon:'repeat',sec:'main'},
+  analytics:{label:'Analytics',icon:'chart',sec:'main'},
+  notes:{label:'Notes',icon:'note',sec:'more'},
+  tests:{label:'Tests',icon:'test',sec:'more'},
+  mistakes:{label:'Mistake Book',icon:'mistake',sec:'more'},
+  goals:{label:'Goals',icon:'goal',sec:'more'},
+  habits:{label:'Habits',icon:'habit',sec:'more'},
+  assistant:{label:'AI Assistant',icon:'ai',sec:'main'},
+  settings:{label:'Settings',icon:'set',sec:'more'}
+};
+function buildNav(){
+  $('#nav').innerHTML=`<div class="nav-label">Overview</div>`+
+    ['dash','planner','routine','outstanding','calendar'].map(k=>navBtn(k)).join('')+
+    `<div class="nav-label">Academics</div>`+['subjects','exams','assignments','tests','mistakes','notes'].map(k=>navBtn(k)).join('')+
+    `<div class="nav-label">Tools</div>`+['focus','revision','goals','habits','analytics','assistant','settings'].map(k=>navBtn(k)).join('');
+  $('#bottomNav').innerHTML=[['dash','Home','dash'],['planner','Plan','plan'],['focus','Focus','focus'],['assistant','AI','ai']].map(([k,l,i])=>`<button data-act="nav:${k}" class="${currentView===k?'on':''}">${I(i,20)}<span>${l}</span></button>`).join('')+
+    `<button data-act="openSidebar">${I('set',20)}<span>More</span></button>`;
+  const od=outstandingItems().length;
+  const ob=$('#nav [data-nav="outstanding"] .badge')||(()=>{const b=document.createElement('span');b.className='badge';$('#nav [data-nav="outstanding"]').appendChild(b);return b;})();
+  ob.textContent=od;ob.style.display=od?'':'none';
+}
+const navBtn=k=>`<button data-act="nav:${k}" data-nav="${k}" class="${currentView===k?'on':''}">${I(VIEWS[k].icon)}<span>${VIEWS[k].label}</span>${k==='outstanding'?'<span class="badge"></span>':''}</button>`;
+
+function render(){
+  chartRedraws=[];
+  $('#main').innerHTML=`<div class="view">${(Views[currentView]||Views.dash)()}</div>`;
+  buildNav();updateBell();
+  $$('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.nav===currentView));
+  $$('#bottomNav button[data-act^="nav"]').forEach(b=>b.classList.toggle('on',b.dataset.act==='nav:'+currentView));
+  $('#main').scrollTop=0;
+}
+const Views={};
+
+/* ---------- DASHBOARD ---------- */
+Views.dash=function(){
+  const t=todayISO(),tgt=state.user.targetMin||180,done=minutesOn(t),prog=pct(done,tgt);
+  const ts=taskStats(),blocks=routineFor(t),od=outstandingItems().length;
+  const cur=blocks.find(b=>toMin(b.start)<=nowMin()&&nowMin()<toMin(b.end));
+  const nextBlk=blocks.find(b=>toMin(b.start)>nowMin());
+  const nextTask=todayTasks().find(x=>!['Completed','Skipped'].includes(x.status));
+  const dl=upcomingDeadlines()[0];
+  const revs=revisionsDue();
+  const w=weekTotals(),mo=pd(t),monday=addDays(t,-(mo.getDay()+6)%7);
+  const monthStart=t.slice(0,8)+'01';
+  const monthMin=lastNDays(pd(t).getDate()).reduce((a,d)=>a+minutesOn(d),0);
+  const monthTarget=(state.user.targetMin||180)*pd(t).getDate();
+  const hr=nowMin()>=12&&nowMin()<18?'afternoon':nowMin()>=18?'evening':'morning';
+  const rec=recommendNow();
+  // day bar
+  const wake=Math.min(...blocks.map(b=>toMin(b.start)),toMin(state.user.wake)),sleep=Math.max(...blocks.map(b=>toMin(b.end)),toMin(state.user.sleep));
+  const span=Math.max(60,sleep-wake);
+  const segs=blocks.map(b=>`<div class="seg" title="${esc(b.title)} ${b.start}–${b.end}" style="width:${(toMin(b.end)-toMin(b.start))/span*100}%;background:${CAT_COLORS[b.category]||'var(--ink3)'};opacity:.85"></div>`).join('');
+  const nowPct=(nowMin()-wake)/span*100;
+  const todaySess=sessionsOn(t);
+  // briefing priorities
+  const pri=[...allOpenTasks()].filter(x=>!x.deadline||x.deadline<=addDays(t,3)).sort((a,b)=>(PRIORITY[b.priority]||2)-(PRIORITY[a.priority]||2)).slice(0,3);
+  const dlSoon=upcomingDeadlines().filter(x=>daysBetween(t,x.date)<=3).length;
+  return `
+  <div class="page-head"><div><h2>Good ${hr}, ${esc(state.user.name||'there')}</h2><p class="num">${WEEKDAYS[pd(t).getDay()]}, ${pd(t).toLocaleDateString(undefined,{day:'numeric',month:'long',year:'numeric'})}</p></div>
+  <button class="btn pri" data-act="whatNow">${I('ai')} What should I do now?</button></div>
+
+  <div class="brief">${I('zap',20)}<div><strong>Daily briefing.</strong> Today: ${ts.total} task${ts.total!==1?'s':''} (${ts.done} done, ${ts.pending} pending) · ${todaySess.length} session${todaySess.length!==1?'s':''} logged · ${revs.length} revision${revs.length!==1?'s':''} due${dl?` · next deadline: ${esc(dl.title)} (${fmtDate(dl.date)})`:''}.<br>
+  ${pri.length?`Today's priority: <ol>${pri.map((p,i)=>`<li>${esc(subjName(p.subjectId))} — ${esc(p.title)}</li>`).join('')}</ol>`:'No pressing priorities — good day to get ahead.'}</div></div>
+
+  <div class="qa">
+    <button data-act="addTask">${I('plan')} Add Task</button><button data-act="startFocus">${I('focus')} Start Focus</button>
+    <button data-act="addSession">${I('clock')} Log Session</button><button data-act="addSubject">${I('book')} Add Subject</button>
+    <button data-act="addRoutine">${I('routine')} Add Routine</button><button data-act="addGoal">${I('goal')} Add Goal</button>
+    <button data-act="addRevision">${I('repeat')} Add Revision</button><button data-act="addNote">${I('note')} Add Note</button>
+    <button data-act="addTest">${I('test')} Record Test</button><button data-act="askAI">${I('ai')} Ask AI</button>
+  </div>
+
+  <div class="hero">
+    <div class="card ring-wrap"><canvas id="ringToday"></canvas><div class="ring-num num">${prog}%</div><div class="ring-lab">Today's target<br><strong class="num">${fmtMin(done)} / ${fmtMin(tgt)}</strong><br><span style="color:var(--ink3)">remaining ${fmtMin(Math.max(0,tgt-done))}</span></div></div>
+    <div class="card nowcard"><div class="card-h"><h3>Now &amp; Next</h3><span class="chip num">${nowHM()}</span></div><div class="card-b" style="padding-top:6px">
+      <div class="blk">${cur?`<div style="display:flex;justify-content:space-between;font-weight:700"><span>${esc(cur.title)}</span><span class="num">${cur.start}–${cur.end}</span></div>
+        <div class="pbar" style="margin:7px 0 4px"><i style="width:${pct(nowMin()-toMin(cur.start),toMin(cur.end)-toMin(cur.start))}%"></i></div><div class="s" style="font-size:12px;color:var(--ink3)">happening now · ${esc(cur.category)}</div>`
+        :`<span style="color:var(--ink3)">No routine block right now — free time.</span>`}</div>
+      <div class="blk"><div class="s" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink3);margin-bottom:3px">Next up</div>
+        ${nextBlk?`<strong>${esc(nextBlk.title)}</strong> <span class="num" style="color:var(--ink3)">${nextBlk.start}</span> <span class="badge b-mut">in ${nextBlk.start>nowHM()?toMin(nextBlk.start)-nowMin():0} min</span>`:'—'}</div>
+      <div class="blk"><div class="s" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink3);margin-bottom:3px">Next task</div>
+        ${nextTask?`<div style="display:flex;align-items:center;gap:9px"><span class="subj-dot" style="background:${subjColor(nextTask.subjectId)}"></span><strong>${esc(nextTask.title)}</strong><button class="btn sm pri" style="margin-left:auto" data-act="completeTask:${nextTask.id}">${I('check',13)} Done</button></div>`:'All clear for today.'}</div>
+      <div class="blk" style="border:none">${dl?`<div class="s" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink3);margin-bottom:3px">Upcoming deadline</div><strong>${esc(dl.title)}</strong> <span class="badge ${daysBetween(t,dl.date)<=2?'b-danger':'b-warn'}">${I(dl.type==='Exam'?'exam':'assign',11)} ${esc(dl.type)} · ${fmtDate(dl.date)}</span>`:''}</div>
+    </div></div>
+    <div class="aicard">
+      <div style="display:flex;gap:8px;align-items:center;font-weight:700;color:var(--accent)">${I('ai',18)} AI recommendation</div>
+      ${rec?`<div><strong>${esc(subjName(rec.subject))}</strong> — ${esc(rec.title)}</div>
+      <div class="why">${rec.why.map(w2=>`<span class="chip">${esc(w2)}</span>`).join('')}<span class="chip">${I('clock',11)} ~${rec.min} min</span></div>
+      <div style="font-size:12.5px;color:var(--ink2)">Why: based on ${rec.why.join(', ')||'your remaining target'}.</div>
+      <button class="btn pri" data-act="startNow">${I('play')} Start Now</button>`
+      :`<div style="font-size:13px;color:var(--ink2)">Nothing pending — add tasks or enjoy a well-earned rest.</div><button class="btn" data-act="addTask">${I('plus')} Add a task</button>`}
+    </div>
+  </div>
+
+  <div class="stat-strip">
+    <div class="stat ${prog>=100?'good':''}"><div class="k">Today</div><div class="v num">${prog}<small>%</small></div></div>
+    <div class="stat"><div class="k">This week</div><div class="v num">${pct(w.min,(state.user.targetMin||180)*7)}<small>%</small></div></div>
+    <div class="stat"><div class="k">This month</div><div class="v num">${pct(monthMin,monthTarget)}<small>%</small></div></div>
+    <div class="stat ${streak()>0?'good':''}"><div class="k">Streak</div><div class="v num">${streak()}<small> d</small></div></div>
+    <div class="stat"><div class="k">Total hours</div><div class="v num">${(state.sessions.reduce((a,s)=>a+s.duration,0)/60).toFixed(1)<1?Math.round(state.sessions.reduce((a,s)=>a+s.duration,0))+'m':(state.sessions.reduce((a,s)=>a+s.duration,0)/60).toFixed(1)+'h'}</div></div>
+    <div class="stat"><div class="k">Avg daily</div><div class="v num">${fmtMin(state.sessions.length?state.sessions.reduce((a,s)=>a+s.duration,0)/Math.max(1,new Set(state.sessions.map(s=>s.date)).size):0)}</div></div>
+    <div class="stat good"><div class="k">Done</div><div class="v num">${ts.done}</div></div>
+    <div class="stat warn"><div class="k">Pending</div><div class="v num">${ts.pending}</div></div>
+    <div class="stat ${ts.overdue?'bad':'good'}"><div class="k">Overdue</div><div class="v num">${ts.overdue}</div></div>
+    <div class="stat ${revs.length?'warn':''}"><div class="k">Revision due</div><div class="v num">${revs.length}</div></div>
+    <div class="stat"><div class="k">Productivity</div><div class="v num">${productivityScore()}<small>/100</small></div></div>
+  </div>
+
+  <div class="dash-grid" style="margin-top:16px">
+    <div class="card"><div class="card-h"><h3>Study hours — last 14 days</h3><span class="chip">target ${fmtMin(tgt)}/day</span></div><div class="card-b"><canvas id="chHours" style="width:100%;height:170px"></canvas></div></div>
+    <div class="card"><div class="card-h"><h3>Today's timeline</h3><button class="btn ghost sm" data-act="nav:routine">Open ${I('chevR',12)}</button></div><div class="card-b">
+      <div class="daybar">${segs}${nowMin()>=wake&&nowMin()<=sleep?`<div class="nowline" style="left:${Math.max(0,Math.min(100,nowPct))}%"></div>`:''}</div>
+      <div class="legend"><span><i style="background:${CAT_COLORS.study}"></i>Study</span><span><i style="background:${CAT_COLORS.class}"></i>Class</span><span><i style="background:${CAT_COLORS.break}"></i>Break/Meal</span><span><i style="background:${CAT_COLORS.exercise}"></i>Exercise</span><span><i style="background:${CAT_COLORS.personal}"></i>Personal</span></div>
+      <div style="font-size:12px;color:var(--ink3);margin-top:10px">${od?`<span class="badge b-danger">${I('out',11)} ${od} outstanding</span> `:''}${routineGaps(blocks).length?`Free slots: ${routineGaps(blocks).slice(0,2).map(g=>fmtHM(g.start)+'–'+fmtHM(g.end)).join(', ')}`:'No long free slots today'}</div>
+    </div></div>
+  </div>
+
+  <div class="dash-grid">
+    <div class="card"><div class="card-h"><h3>Today's tasks</h3><button class="btn sm pri" data-act="addTask">${I('plus',13)} Add</button></div><div class="card-b" style="padding-top:4px">
+      ${todayTasks().length?todayTasks().sort((a,b)=>(PRIORITY[b.priority]||2)-(PRIORITY[a.priority]||2)).map(taskRow).join(''):`<div class="empty">${I('check',26)}<br>No tasks scheduled for today</div>`}
+    </div></div>
+    <div class="card"><div class="card-h"><h3>Revision due</h3><button class="btn ghost sm" data-act="nav:revision">Open ${I('chevR',12)}</button></div><div class="card-b" style="padding-top:4px">
+      ${revs.length?revs.slice(0,6).map(r=>`<div class="row-item"><span class="subj-dot" style="background:${subjColor(r.subjectId)}"></span><div class="grow"><div class="t">${esc(r.topic)}</div><div class="s">${esc(subjName(r.subjectId))} · confidence ${confLabel(r.confidence)}</div></div><button class="btn sm" data-act="doRevise:${r.id}">${I('repeat',13)} Revise</button></div>`).join(''):`<div class="empty">${I('repeat',26)}<br>Nothing due — revisions appear automatically</div>`}
+    </div></div>
+  </div>`;
+};
+function taskRow(t){
+  const done=t.status==='Completed';
+  return `<div class="row-item"><button class="icon-btn" style="width:28px;height:28px;${done?'color:var(--accent)':''}" data-act="completeTask:${t.id}" aria-label="Toggle complete">${I(done?'check':'plus',15)}</button>
+  <span class="subj-dot" style="background:${subjColor(t.subjectId)}"></span>
+  <div class="grow"><div class="t" style="${done?'text-decoration:line-through;color:var(--ink3)':''}">${esc(t.title)}</div>
+  <div class="s">${esc(subjName(t.subjectId))}${t.topic?' · '+esc(t.topic):''} · ${t.est||45}m ${t.deadline?`· due ${fmtDate(t.deadline)}`:''}</div></div>
+  ${statusBadge(t.status)}<button class="icon-btn" style="width:28px;height:28px" data-act="editTask:${t.id}" aria-label="Edit">${I('edit',14)}</button></div>`;
+}
+function afterRenderDash(){
+  const rc=$('#ringToday');if(rc){ringChart(rc,pct(minutesOn(todayISO()),state.user.targetMin||180));chartRedraws.push(()=>ringChart(rc,pct(minutesOn(todayISO()),state.user.targetMin||180)));}
+  const ch=$('#chHours');if(ch){
+    const data=lastNDays(14).map(d=>({l:pd(d).getDate()+'',v:Math.round(minutesOn(d)),c:minutesOn(d)>=(state.user.targetMin||180)*0.8?css('--accent'):css('--line2')}));
+    const draw=()=>barChart(ch,data);draw();chartRedraws.push(draw);
+  }
+}
+
+/* ---------- PLANNER ---------- */
+let plannerFilter='all';
+Views.planner=function(){
+  const t=todayISO(),tmr=addDays(t,1);
+  const groups=[
+    ['Overdue',state.tasks.filter(x=>!['Completed','Skipped'].includes(x.status)&&(x.date&&x.date<t||x.deadline&&x.deadline<t))],
+    ['Today',state.tasks.filter(x=>x.date===t)],
+    ['Tomorrow',state.tasks.filter(x=>x.date===tmr)],
+    ['Upcoming',state.tasks.filter(x=>x.date>tmr||(!x.date&&x.deadline>t))],
+    ['No date',state.tasks.filter(x=>!x.date&&!x.deadline)],
+    ['Completed / Skipped',state.tasks.filter(x=>['Completed','Skipped'].includes(x.status))]
+  ].filter(([_,a])=>a.length||_==='Today');
+  const subs=[...new Set(state.tasks.map(x=>x.subjectId))];
+  const f=k=>k==='all'||(k==='today'?true:true);
+  return `
+  <div class="page-head"><div><h2>Study Planner</h2><p>Plan today, this week, exam prep and long-term goals — every task here feeds the AI and analytics.</p></div>
+  <button class="btn pri" data-act="addTask">${I('plus')} New study task</button></div>
+  <div class="tabs" style="margin-bottom:16px">
+    ${['all',...subs.map(s=>'s:'+s)].map(k=>`<button data-act="pfilter:${k}" class="${plannerFilter===k?'on':''}">${k==='all'?'All subjects':esc(subjName(k.slice(2)))}</button>`).join('')}
+  </div>
+  <div class="grid" style="grid-template-columns:1fr 1fr;align-items:start">
+  ${groups.map(([label,items])=>{
+    let list=items;
+    if(plannerFilter.startsWith('s:'))list=list.filter(x=>x.subjectId===plannerFilter.slice(2));
+    return `<div class="card"><div class="card-h"><h3>${label} <span class="badge b-mut">${list.length}</span></h3></div><div class="card-b" style="padding-top:4px">
+    ${list.length?list.sort((a,b)=>(PRIORITY[b.priority]||2)-(PRIORITY[a.priority]||2)).map(taskRow).join(''):'<div class="empty">Nothing here</div>'}</div></div>`;
+  }).join('')}
+  ${!state.tasks.length?`<div class="card" style="grid-column:1/-1"><div class="empty">${I('plan',30)}<br>No tasks yet — create your first study task.<br><button class="btn pri" style="margin-top:12px" data-act="addTask">${I('plus')} Add study task</button></div></div>`:''}
+  </div>
+  <style>@media(max-width:900px){.grid{grid-template-columns:1fr!important}}</style>`;
+};
+function taskForm(existing){
+  const subOpts=state.subjects.map(s=>({v:s.id,l:s.name}));
+  return formModal(existing?'Edit study task':'New study task',[
+    {k:'title',label:'Task title',req:true,val:existing?.title},
+    {k:'subjectId',label:'Subject',t:'select',o:subOpts.length?subOpts:['none'],val:existing?.subjectId||(subOpts[0]&&subOpts[0].v)},
+    {k:'chapter',label:'Chapter',val:existing?.chapter,half:true},
+    {k:'topic',label:'Topic',val:existing?.topic,half:true},
+    {k:'date',label:'Planned date',t:'date',req:true,val:existing?.date||todayISO()},
+    {k:'deadline',label:'Deadline (optional)',t:'date',val:existing?.deadline},
+    {k:'priority',label:'Priority',t:'select',o:['high','medium','low'],val:existing?.priority||'medium'},
+    {k:'difficulty',label:'Difficulty',t:'select',o:['easy','moderate','hard'],val:existing?.difficulty||'moderate'},
+    {k:'est',label:'Estimated minutes',t:'number',min:5,val:existing?.est||45,half:true},
+    {k:'type',label:'Type',t:'select',o:['study','revision','practice','assignment','project','exam-prep','notes','custom'],val:existing?.type||'study'},
+    {k:'resources',label:'Resources / links',val:existing?.resources,half:false,hint:'Book pages, URLs, files…'},
+    {k:'notes',label:'Notes',t:'textarea',val:existing?.notes}
+  ],(v,m)=>{
+    if(v.subjectId==='none')v.subjectId=null;
+    if(existing)Object.assign(existing,v);else state.tasks.push({id:uid(),status:'Not Started',actual:0,...v});
+    save();m.close();render();toast(existing?'Task updated':'Task added','ok');
+  },existing?'Save changes':'Add task');
+}
+
+/* ---------- ROUTINE ---------- */
+Views.routine=function(){
+  const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const sel=Views.routine._day??0;
+  const dow=(sel+1)%7;
+  const dateISO=addDays(todayISO(),(dow-pd(todayISO()).getDay()+7)%7===7?0:(dow-pd(todayISO()).getDay()+7)%7);
+  const blocks=routineFor(dateISO);
+  const gaps=routineGaps(blocks);
+  const isToday=dow===pd(todayISO()).getDay();
+  // missed detection: study block ended, no session overlapping
+  const missed=isToday?blocks.filter(b=>b.category==='study'&&toMin(b.end)<nowMin()&&!sessionsOn(todayISO()).some(s=>{const ss=toMin(s.start||'00:00'),se=ss+(s.duration||0);return ss<toMin(b.end)&&se>toMin(b.start);})):[];
+  return `
+  <div class="page-head"><div><h2>Daily Routine</h2><p>Free slots, overload and missed blocks are detected automatically.</p></div>
+  <button class="btn pri" data-act="addRoutine">${I('plus')} Add routine block</button></div>
+  <div class="tabs" style="margin-bottom:16px">${days.map((d,i)=>`<button data-act="rday:${i}" class="${i===sel?'on':''}">${d}</button>`).join('')}</div>
+  <div class="grid" style="grid-template-columns:1.4fr 1fr;align-items:start">
+    <div class="card"><div class="card-h"><h3>${WEEKDAYS[dow]}${isToday?' · today':''}</h3><span class="chip">${blocks.reduce((a,b)=>a+(toMin(b.end)-toMin(b.start)),0)}m planned</span></div><div class="card-b">
+      ${blocks.length?`<div class="tl">${blocks.map(b=>{
+        const now=isToday&&toMin(b.start)<=nowMin()&&nowMin()<toMin(b.end);
+        const past=isToday&&toMin(b.end)<=nowMin();
+        return `<div class="tl-item ${now?'now':''} ${past?'past':''}">
+          <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap"><span class="num" style="font-weight:700;font-size:13px">${b.start}–${b.end}</span>
+          <strong>${esc(b.title)}</strong><span class="chip" style="color:${CAT_COLORS[b.category]}">${esc(b.category)}</span>
+          ${b.priority==='high'?'<span class="badge b-danger">high</span>':''}${b.subjectId?`<span class="badge b-mut">${esc(subjName(b.subjectId))}</span>`:''}</div>
+          ${b.notes?`<div class="s">${esc(b.notes)}</div>`:''}
+          <div style="margin-top:5px;display:flex;gap:6px"><button class="btn ghost sm" data-act="editRoutine:${b.id}">${I('edit',12)} Edit</button><button class="btn ghost sm" style="color:var(--danger)" data-act="delRoutine:${b.id}">${I('trash',12)} Delete</button></div></div>`;
+      }).join('')}</div>`:`<div class="empty">${I('routine',28)}<br>No blocks for this day yet</div>`}
+    </div></div>
+    <div>
+      <div class="card" style="margin-bottom:16px"><div class="card-h"><h3>Free study slots</h3></div><div class="card-b">
+      ${gaps.length?gaps.map(g=>`<div class="row-item"><div class="grow"><div class="t num">${fmtHM(g.start)} – ${fmtHM(g.end)}</div><div class="s">${g.end-g.start>=90?'Great for deep study':g.end-g.start>=60?'Good for a full task':'Short — good for revision flash review'}</div></div><span class="badge b-acc">${fmtMin(g.end-g.start)}</span></div>`).join(''):'<div class="empty">Day is fully booked</div>'}
+      </div></div>
+      ${missed.length?`<div class="card" style="border-color:var(--danger)"><div class="card-h"><h3 style="color:var(--danger)">Missed today</h3></div><div class="card-b">${missed.map(b=>`<div class="row-item"><div class="grow"><div class="t">${esc(b.title)}</div><div class="s num">${b.start}–${b.end}</div></div><button class="btn sm" data-act="logMissed:${b.id}">Log catch-up</button></div>`).join('')}</div></div>`:''}
+    </div>
+  </div>
+  <style>@media(max-width:900px){.grid{grid-template-columns:1fr!important}}</style>`;
+};
+function routineForm(existing){
+  return formModal(existing?'Edit routine block':'New routine block',[
+    {k:'title',label:'Title',req:true,val:existing?.title},
+    {k:'category',label:'Category',t:'select',o:['study','class','break','meal','exercise','personal','free'],val:existing?.category||'study'},
+    {k:'start',label:'Start time',t:'time',req:true,val:existing?.start||'18:00'},
+    {k:'end',label:'End time',t:'time',req:true,val:existing?.end||'19:00'},
+    {k:'repeat',label:'Repeat',t:'select',o:[{v:'daily',l:'Every day'},{v:'weekly',l:'Specific days'}],val:existing?.repeat||'daily'},
+    {k:'subjectId',label:'Subject (for study blocks)',t:'select',o:[{v:'',l:'—'},...state.subjects.map(s=>({v:s.id,l:s.name}))],val:existing?.subjectId||''},
+    {k:'days',label:'Days (if weekly)',t:'select',o:[1,2,3,4,5,6,0].map(d=>({v:d,l:WEEKDAYS[d]})),val:existing?.days?existing.days[0]:1,hint:'Save multiple times for multiple days, or pick repeat: every day'},
+    {k:'priority',label:'Priority',t:'select',o:['high','medium','low'],val:existing?.priority||'medium'},
+    {k:'notes',label:'Notes',t:'textarea',val:existing?.notes}
+  ],(v,m)=>{
+    v.days=[Number(v.days)];
+    if(existing)Object.assign(existing,v);else state.routine.push({id:uid(),...v});
+    save();m.close();render();toast('Routine saved','ok');
+  });
+}
+
+/* ---------- OUTSTANDING ---------- */
+Views.outstanding=function(){
+  const items=outstandingItems();
+  const p=catchUpPlan();
+  return `
+  <div class="page-head"><div><h2>Outstanding Center</h2><p>Every unfinished item is collected here automatically — nothing gets lost.</p></div>
+  <button class="btn pri" data-act="catchUp" ${items.length?'':'disabled'}>${I('zap')} I am behind — build catch-up plan</button></div>
+  ${items.length?`<div class="card"><div class="card-b" style="padding-top:6px">
+  ${items.map(it=>{
+    const odays=it.deadline?daysBetween(it.deadline,todayISO()):0;
+    return `<div class="row-item" style="align-items:flex-start;flex-wrap:wrap">
+    <div class="grow">
+      <div class="t">${I(it.kind==='Revision'?'repeat':it.kind==='Assignment'?'assign':'plan',13)} ${esc(it.title)} <span class="badge b-mut">${it.kind}</span></div>
+      <div class="s">${esc(subjName(it.subject))} · originally ${fmtDate(it.date)} · ${it.reason} · est. remaining ${fmtMin(it.est)}</div>
+      <div style="margin-top:5px;display:flex;gap:6px;flex-wrap:wrap">
+        <span class="badge ${odays>3?'b-danger':odays>0?'b-warn':'b-info'}">${odays>0?odays+' day(s) overdue':'due now'}</span>
+        <span class="badge ${it.priority==='high'?'b-danger':'b-mut'}">${esc(it.priority||'medium')} priority</span>
+        <span class="chip">${I('zap',11)} ${suggestAction(it)}</span>
+      </div></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btn sm" data-act="reschedToday:${it.kind}:${it.obj.id}">${I('plan',12)} Today</button>
+      <button class="btn sm" data-act="reschedTmr:${it.kind}:${it.obj.id}">${I('cal',12)} Tomorrow</button>
+      <button class="btn sm pri" data-act="focusOn:${it.kind}:${it.obj.id}">${I('play',12)} Focus</button>
+    </div></div>`;
+  }).join('')}</div></div>
+  <div class="card" style="margin-top:16px"><div class="card-h"><h3>AI recovery preview</h3></div><div class="card-b" style="font-size:13.5px;white-space:pre-wrap">${esc(localCatchUpText())}</div></div>`
+  :`<div class="card"><div class="empty">${I('check',30)}<br>Everything is clear — no outstanding work.<br><span style="font-size:12px">Completed tasks, past-due revisions and late assignments would appear here.</span></div></div>`}`;
+};
+function suggestAction(it){
+  if(it.kind==='Revision')return '25-min review, then rate confidence';
+  if(it.priority==='high')return 'do a '+Math.min(45,it.est)+'-min block today';
+  return 'schedule '+fmtMin(it.est)+' in a free slot';
+}
+function localCatchUpText(){
+  const p=catchUpPlan();
+  if(!p.items.length)return 'Nothing to recover.';
+  let s=`Most important first (high priority / oldest):\n${p.items.slice(0,3).map((i,n)=>`${n+1}. ${i.title}`).join('\n')}\n\n`;
+  s+=`Today: ${fmtMin(p.capToday)} across ${p.today.length} item(s) — ${p.today.map(i=>i.title).join(', ')||'keep light'}\n`;
+  s+=`Tomorrow: ${fmtMin(p.capTmr)} across ${p.tomorrow.length} item(s) — ${p.tomorrow.map(i=>i.title).join(', ')||'nothing forced'}\n`;
+  if(p.later.length)s+=`Can wait: ${p.later.map(i=>i.title).join(', ')}\n`;
+  s+=`\nPress "I am behind" to apply this plan (it never deletes or permanently changes anything without your approval).`;
+  return s;
+}
+
+/* ---------- CALENDAR ---------- */
+let calMode='month',calAnchor=todayISO();
+Views.calendar=function(){
+  const anchor=pd(calAnchor);
+  const monthName=anchor.toLocaleDateString(undefined,{month:'long',year:'numeric'});
+  let body='';
+  const eventsFor=iso=>{
+    const ev=[];
+    state.tasks.forEach(x=>{if(x.date===iso||x.deadline===iso)ev.push({t:x.title,type:'task',color:subjColor(x.subjectId),obj:x,kind:'Task',when:x.date===iso?'planned':'deadline',st:x.status});});
+    state.assignments.forEach(a=>{if(a.due===iso)ev.push({t:a.title,type:'assign',color:'var(--amber)',obj:a,kind:'Assignment'});});
+    state.exams.forEach(e=>{if(e.date===iso)ev.push({t:e.name,type:'exam',color:'var(--danger)',obj:e,kind:'Exam'});});
+    state.revisions.forEach(r=>{if(r.due===iso)ev.push({t:'Revise: '+r.topic,type:'rev',color:subjColor(r.subjectId),obj:r,kind:'Revision'});});
+    sessionsOn(iso).forEach(s=>ev.push({t:'Studied: '+(s.topic||subjName(s.subjectId)),type:'sess',color:'var(--accent)',obj:s,kind:'Session ('+fmtMin(s.duration)+')'}));
+    return ev;
+  };
+  if(calMode==='month'){
+    const y=anchor.getFullYear(),m2=anchor.getMonth();
+    const first=new Date(y,m2,1),start=(first.getDay()+6)%7; // Monday-first
+    const dim=new Date(y,m2+1,0).getDate(),dimPrev=new Date(y,m2,0).getDate();
+    let cells='';
+    for(let i=0;i<42;i++){
+      const dn=i-start+1;let iso,cls='cal-cell',out=false;
+      if(dn<1){iso=addDays(`${y}-${pad(m2+1)}-01`,dn-dimPrev);out=true;}
+      else if(dn>dim){iso=addDays(`${y}-${pad(m2+1)}-${pad(dim)}`,dn-dim);out=true;}
+      else iso=`${y}-${pad(m2+1)}-${pad(dn)}`;
+      if(out)cls+=' out';if(iso===todayISO())cls+=' today';
+      const ev=eventsFor(iso);
+      cells+=`<div class="${cls}" data-act="calDay:${iso}" role="button" tabindex="0"><div class="d num">${dn<1?dimPrev+dn:dn>dim?dn-dim:dn}</div><div class="cal-dots">${ev.slice(0,6).map(e=>`<i style="background:${e.color}"></i>`).join('')}</div></div>`;
+    }
+    body=`<div class="cal-grid">${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=>`<div class="cal-dow">${d}</div>`).join('')}${cells}</div>`;
+  }else if(calMode==='week'){
+    const dow=(anchor.getDay()+6)%7,mon=addDays(calAnchor,-dow);
+    body=`<div class="week-grid">${[0,1,2,3,4,5,6].map(i=>{const iso=addDays(mon,i);const ev=eventsFor(iso);
+      return `<div class="week-col ${iso===todayISO()?'today':''}"><div class="wh">${WEEKDAYS[pd(iso).getDay()]} ${pd(iso).getDate()}</div>
+      ${ev.length?ev.map(e=>`<div class="cal-ev" data-act="calEv:${e.type}:${e.obj.id}"><i class="subj-dot" style="background:${e.color}"></i><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(e.t)}</span></div>`).join(''):'<div style="font-size:11.5px;color:var(--ink3);text-align:center;padding:8px 0">—</div>'}</div>`;}).join('')}</div>`;
+  }else{
+    const ev=eventsFor(calAnchor),blocks=routineFor(calAnchor);
+    body=`<div class="grid" style="grid-template-columns:1fr 1fr;align-items:start">
+      <div class="card"><div class="card-h"><h3>Events</h3></div><div class="card-b" style="padding-top:4px">${ev.length?ev.map(e=>`<div class="cal-ev" data-act="calEv:${e.type}:${e.obj.id}"><i class="subj-dot" style="background:${e.color}"></i><span>${esc(e.t)}</span><span class="badge b-mut" style="margin-left:auto">${e.kind}</span></div>`).join(''):'<div class="empty">No events</div>'}</div></div>
+      <div class="card"><div class="card-h"><h3>Routine</h3></div><div class="card-b" style="padding-top:4px">${blocks.length?blocks.map(b=>`<div class="row-item"><div class="grow"><div class="t num">${b.start}–${b.end} ${esc(b.title)}</div></div><span class="chip" style="color:${CAT_COLORS[b.category]}">${esc(b.category)}</span></div>`).join(''):'<div class="empty">No blocks</div>'}</div></div></div>`;
+  }
+  return `
+  <div class="page-head"><div><h2>Academic Calendar</h2><p>Tasks, sessions, assignments, exams, revisions and deadlines in one place.</p></div></div>
+  <div class="cal-head">
+    <button class="icon-btn" data-act="calNav:-1" aria-label="Previous">${I('chevL')}</button>
+    <strong style="min-width:150px;text-align:center;font-family:var(--fd);font-size:16px">${calMode==='month'?monthName:fmtDate(calAnchor)+(calMode==='week'?' · week':'')}</strong>
+    <button class="icon-btn" data-act="calNav:1" aria-label="Next">${I('chevR')}</button>
+    <button class="btn sm" data-act="calToday">Today</button>
+    <div class="tabs" style="margin-left:auto">${['day','week','month'].map(m2=>`<button data-act="calMode:${m2}" class="${calMode===m2?'on':''}">${m2[0].toUpperCase()+m2.slice(1)}</button>`).join('')}</div>
+  </div>${body}
+  <style>@media(max-width:900px){.cal-cell{min-height:56px;padding:4px}}</style>`;
+};
+function calEventModal(type,id){
+  const map={task:[state.tasks,'editTask'],assign:[state.assignments,'editAssign'],exam:[state.exams,null],rev:[state.revisions,null],sess:[state.sessions,null]};
+  const[list]=map[type]||[[]];const o=list.find(x=>x.id===id);
+  if(!o){toast('Item no longer exists','warn');return;}
+  const rows=[['Title',o.title||o.name||o.topic],['Subject',subjName(o.subjectId)],['Date',o.date||o.due||o.start?fmtDate(o.date||o.due):(o.start||'')]];
+  if(o.status)rows.push(['Status',o.status]);
+  if(o.duration)rows.push(['Duration',fmtMin(o.duration)]);
+  if(o.focus)rows.push(['Focus rating',o.focus+'/5']);
+  if(o.prep!==undefined)rows.push(['Preparation',o.prep+'%']);
+  if(o.confidence)rows.push(['Confidence',confLabel(o.confidence)]);
+  if(o.notes)rows.push(['Notes',o.notes]);
+  modal(type==='task'?'Task details':type==='exam'?'Exam':'Details',
+    rows.map(([k,v])=>`<div style="display:flex;gap:12px;padding:6px 0;border-bottom:1px solid var(--line)"><strong style="min-width:100px;font-size:12.5px;color:var(--ink3)">${k}</strong><span style="font-size:13.5px">${esc(v)}</span></div>`).join(''),
+    type==='task'?`<button class="btn pri" data-act="editTask:${o.id}">${I('edit',13)} Open in planner</button>`:'');
+}
+
+/* ---------- SUBJECTS ---------- */
+Views.subjects=function(){
+  const weak=weakTopics(5);
+  return `
+  <div class="page-head"><div><h2>Subjects &amp; Syllabus</h2><p>Unlimited subjects with chapters, topics, revision status and progress.</p></div>
+  <button class="btn pri" data-act="addSubject">${I('plus')} Add subject</button></div>
+  ${state.subjects.length?`<div class="subj-grid">
+  ${state.subjects.map(s=>{
+    const p=subjectProgress(s),hrs=state.sessions.filter(x=>x.subjectId===s.id).reduce((a,x)=>a+x.duration,0);
+    const tests=state.tests.filter(t2=>t2.subjectId===s.id);
+    const avg=tests.length?Math.round(tests.reduce((a,t2)=>a+t2.obtained/t2.total,0)/tests.length*100):null;
+    const wks=state.revisions.filter(r=>r.subjectId===s.id&&r.confidence<=2);
+    return `<div class="subj-card">
+      <div class="sc-h"><span class="subj-dot" style="background:${s.color};width:12px;height:12px"></span><div style="flex:1"><strong style="font-size:15.5px">${esc(s.name)}</strong><div style="font-size:12px;color:var(--ink3)">${s.chapters.reduce((a,c)=>a+c.topics.length,0)} topics · ${fmtMin(hrs)} studied${avg!==null?` · avg test ${avg}%`:''}</div></div>
+      <button class="icon-btn" style="width:30px;height:30px" data-act="editSubject:${s.id}" aria-label="Edit">${I('edit',14)}</button>
+      <button class="icon-btn" style="width:30px;height:30px;color:var(--danger)" data-act="delSubject:${s.id}" aria-label="Delete">${I('trash',14)}</button></div>
+      <div style="display:flex;justify-content:space-between;font-weight:700;font-size:13px;margin-bottom:5px"><span>Syllabus</span><span class="num" style="color:${p>=70?'var(--accent)':p>=40?'var(--amber)':'var(--danger)'}">${p}%</span></div>
+      <div class="pbar ${p<40?'danger':p<70?'amber':''}" style="margin-bottom:12px"><i style="width:${p}%"></i></div>
+      ${s.chapters.length?`<details style="margin-bottom:8px"><summary style="cursor:pointer;font-weight:600;font-size:13px;color:var(--ink2)">${s.chapters.length} chapter(s) — manage topics</summary>
+        <div style="margin-top:9px">${s.chapters.map(c=>`<div class="chapter"><div class="ch-h" data-act="toggleCh:${s.id}:${c.id}"><span>${c.topics.filter(t=>t.done).length}/${c.topics.length}</span> ${esc(c.name)}<span style="margin-left:auto">${I('chevD',13)}</span></div>
+          ${Views.subjects._open===s.id+':'+c.id?c.topics.map(tp=>`<div class="topic"><button class="icon-btn" style="width:24px;height:24px;${tp.done?'color:var(--accent)':''}" data-act="topicDone:${s.id}:${c.id}:${tp.id}">${I(tp.done?'check':'plus',13)}</button><span style="${tp.done?'text-decoration:line-through;color:var(--ink3)':''}">${esc(tp.name)}</span>
+          ${tp.done?`<span class="conf ${tp.conf&&tp.conf<=2?'b-danger badge':'badge b-mut'}">${tp.conf?confLabel(tp.conf):'unrated'}</span>`:''}
+          <button class="icon-btn" style="width:24px;height:24px;color:var(--danger)" data-act="delTopic:${s.id}:${c.id}:${tp.id}">${I('x',12)}</button></div>`).join(''):''}
+          ${Views.subjects._open===s.id+':'+c.id?`<div class="topic"><button class="btn sm ghost" data-act="addTopic:${s.id}:${c.id}">${I('plus',12)} Add topic</button></div>`:''}
+        </div>`).join('')}
+        <button class="btn sm" style="margin-top:4px" data-act="addChapter:${s.id}">${I('plus',12)} Add chapter</button></div></details>`:''}
+      <div style="display:flex;gap:6px;flex-wrap:wrap">${wks.length?`<span class="badge b-danger">${wks.length} weak topic(s)</span>`:''}<button class="btn sm" data-act="subjAddTopicQuick:${s.id}">${I('repeat',12)} Quick add topic</button></div>
+    </div>`;
+  }).join('')}</div>`
+  :`<div class="card"><div class="empty">${I('book',30)}<br>No subjects yet.<br><button class="btn pri" style="margin-top:12px" data-act="addSubject">${I('plus')} Add your first subject</button></div></div>`}
+  ${weak.length?`<div class="card" style="margin-top:16px"><div class="card-h"><h3>Weak areas detected</h3></div><div class="card-b">${weak.map(w=>`<span class="badge b-warn" style="margin:0 6px 6px 0">${esc(w.name)}</span>`).join('')}<div class="hint">From low confidence ratings, repeated mistakes and skipped topics. These get priority in revision scheduling.</div></div></div>`:''}`;
+};
+function subjectForm(existing){
+  formModal(existing?'Edit subject':'New subject',[{k:'name',label:'Subject name',req:true,val:existing?.name}],(v,m)=>{
+    if(existing){existing.name=v.name;}else state.subjects.push({...newSubject(v.name)});
+    save();m.close();render();toast('Subject saved','ok');
+  });
+}
+
+/* ---------- EXAMS ---------- */
+Views.exams=function(){
+  const t=todayISO();
+  return `
+  <div class="page-head"><div><h2>Exam Mode</h2><p>Countdown, readiness score and auto-generated preparation plans.</p></div>
+  <button class="btn pri" data-act="addExam">${I('plus')} Add exam</button></div>
+  ${state.exams.length?`<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(320px,1fr))">
+  ${state.exams.slice().sort((a,b)=>a.date<b.date?-1:1).map(e=>{
+    const d=daysBetween(t,e.date),past=d<0;
+    const readiness=Math.round((e.prep||0)*0.75+Math.min(100,Math.max(0,d)*5)*0.25);
+    return `<div class="card"><div class="card-b">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div><strong style="font-size:16px">${esc(e.name)}</strong><div style="font-size:12.5px;color:var(--ink3)">${esc(subjName(e.subjectId))} · ${fmtDate(e.date)} · importance ${esc(e.importance||'medium')}</div></div>
+        <div style="display:flex;gap:2px"><button class="icon-btn" style="width:30px;height:30px" data-act="editExam:${e.id}">${I('edit',14)}</button><button class="icon-btn" style="width:30px;height:30px;color:var(--danger)" data-act="delExam:${e.id}">${I('trash',14)}</button></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:16px;margin:14px 0">
+        <div style="text-align:center;min-width:76px"><div class="serif num" style="font-size:34px;font-weight:700;color:${past?'var(--ink3)':d<=7?'var(--danger)':'var(--accent)'}">${past?'—':d}</div><div style="font-size:11px;color:var(--ink3)">${past?'past':'days left'}</div></div>
+        <div style="flex:1">${hbar('Preparation',e.prep||0,100,e.prep>=70?'var(--accent)':'var(--amber)')}${hbar('Readiness',readiness,100)}</div>
+      </div>
+      ${e.chapters&&e.chapters.length?`<div style="margin-bottom:10px">${e.chapters.map(c=>`<span class="badge b-mut" style="margin:0 4px 4px 0">${esc(c)}</span>`).join('')}</div>`:''}
+      <div style="display:flex;gap:7px;flex-wrap:wrap">
+        <button class="btn sm pri" data-act="examPlan:${e.id}" ${past?'disabled':''}>${I('zap',12)} Generate study plan</button>
+        <button class="btn sm" data-act="examAddTask:${e.id}" ${past?'disabled':''}>${I('plus',12)} Add prep task</button>
+      </div></div></div>`;
+  }).join('')}</div>`
+  :`<div class="card"><div class="empty">${I('exam',30)}<br>No exams tracked. Add your next exam to unlock countdowns and auto study plans.</div></div>`}`;
+};
+function examForm(existing){
+  formModal(existing?'Edit exam':'New exam',[
+    {k:'name',label:'Exam name',req:true,val:existing?.name,ph:'Mid-term Mathematics'},
+    {k:'subjectId',label:'Subject',t:'select',o:state.subjects.map(s=>({v:s.id,l:s.name})),val:existing?.subjectId},
+    {k:'date',label:'Exam date',t:'date',req:true,val:existing?.date},
+    {k:'importance',label:'Importance',t:'select',o:['high','medium','low'],val:existing?.importance||'medium'},
+    {k:'prep',label:'Current preparation %',t:'number',min:0,max:100,val:existing?.prep||0},
+    {k:'chapters',label:'Syllabus / chapters (one per line)',t:'textarea',val:(existing?.chapters||[]).join('\n')}
+  ],(v,m)=>{
+    v.chapters=v.chapters.split('\n').map(x=>x.trim()).filter(Boolean);
+    if(existing)Object.assign(existing,v);else state.exams.push({id:uid(),...v});
+    save();m.close();render();toast('Exam saved','ok');
+  });
+}
+
+/* ---------- ASSIGNMENTS ---------- */
+Views.assignments=function(){
+  const t=todayISO();
+  const list=state.assignments.slice().sort((a,b)=>(a.due||'9')<(b.due||'9')?-1:1);
+  return `
+  <div class="page-head"><div><h2>Assignments &amp; Projects</h2><p>Deadlines count down automatically and feed the dashboard + Outstanding Center.</p></div>
+  <button class="btn pri" data-act="addAssign">${I('plus')} Add assignment</button></div>
+  ${list.length?`<div class="card"><div class="card-b" style="padding-top:6px">
+  ${list.map(a=>{const d=a.due?daysBetween(t,a.due):null;const late=d!==null&&d<0&&a.progress<100;
+    return `<div class="row-item" style="align-items:flex-start">
+    <div class="grow"><div class="t">${esc(a.title)} ${late?'<span class="badge b-danger">overdue</span>':a.progress>=100?'<span class="badge b-ok">done</span>':d===0?'<span class="badge b-danger">due today</span>':d!==null&&d<=2?'<span class="badge b-warn">in '+d+'d</span>':''}</div>
+    <div class="s">${esc(subjName(a.subjectId))} · ${a.due?'submit '+fmtDate(a.due):'no date'} · ${esc(a.priority||'medium')} priority${a.notes?' · '+esc(a.notes):''}</div>
+    <div class="pbar" style="max-width:280px;margin-top:6px"><i style="width:${a.progress||0}%;${late?'background:var(--danger)':''}"></i></div></div>
+    <div style="display:flex;gap:2px;align-items:center"><span class="num" style="font-size:12.5px;font-weight:700;color:var(--ink3);margin-right:6px">${a.progress||0}%</span>
+    <button class="btn sm" data-act="assignProg:${a.id}">${I('edit',12)} Progress</button>
+    <button class="icon-btn" style="width:30px;height:30px" data-act="editAssign:${a.id}">${I('edit',13)}</button>
+    <button class="icon-btn" style="width:30px;height:30px;color:var(--danger)" data-act="delAssign:${a.id}">${I('trash',13)}</button></div></div>`;
+  }).join('')}</div></div>`
+  :`<div class="card"><div class="empty">${I('assign',30)}<br>No assignments tracked yet.</div></div>`}`;
+};
+function assignForm(existing){
+  formModal(existing?'Edit assignment':'New assignment / project',[
+    {k:'title',label:'Title',req:true,val:existing?.title},
+    {k:'subjectId',label:'Subject',t:'select',o:state.subjects.map(s=>({v:s.id,l:s.name})),val:existing?.subjectId},
+    {k:'due',label:'Submission date',t:'date',val:existing?.due},
+    {k:'priority',label:'Priority',t:'select',o:['high','medium','low'],val:existing?.priority||'medium'},
+    {k:'progress',label:'Progress %',t:'number',min:0,max:100,val:existing?.progress||0},
+    {k:'resources',label:'Files / resources',val:existing?.resources},
+    {k:'notes',label:'Notes',t:'textarea',val:existing?.notes}
+  ],(v,m)=>{
+    if(existing)Object.assign(existing,v);else state.assignments.push({id:uid(),...v});
+    save();m.close();render();toast('Assignment saved','ok');
+  });
+}
+
+/* ---------- FOCUS ---------- */
+Views.focus=function(){
+  const F=Focus;
+  const t=todayISO();
+  return `
+  <div class="page-head"><div><h2>Focus Mode</h2><p>Distraction-free sessions. Completed sessions update all your statistics.</p></div></div>
+  <div class="focus-wrap">
+    <div class="tabs" style="margin:0 auto 8px"><button data-act="fmode:pomodoro" class="${F.mode==='pomodoro'?'on':''}">Pomodoro ${state.settings.focusMin}/${state.settings.breakMin}</button><button data-act="fmode:custom" class="${F.mode==='custom'?'on':''}">Custom timer</button></div>
+    ${F.mode==='custom'?`<div style="display:flex;gap:8px;justify-content:center;margin:8px 0"><input type="number" id="fmins" value="${F.customMin}" min="5" max="240" style="width:90px;padding:8px;border:1px solid var(--line2);border-radius:9px;background:var(--panel)" aria-label="Minutes"> <span style="align-self:center;color:var(--ink3)">minutes</span></div>`:''}
+    <div class="focus-ring"><canvas id="fRing"></canvas><div class="focus-time num" id="fTime">${fmtClock(F.remaining)}</div></div>
+    <div style="color:var(--ink3);font-size:13px" id="fPhase">${F.running?(F.onBreak?'Break time — relax':'Focus session in progress'):'Ready when you are · today: '+fmtMin(minutesOn(t))+' studied'}</div>
+    <div class="focus-ctl">
+      ${F.running?`<button class="btn pri" data-act="fToggle" style="padding:11px 22px">${F.paused?I('play')+' Resume':I('pause')+' Pause'}</button><button class="btn" data-act="fFinish">${I('check')} Finish now</button>`
+      :`<button class="btn pri" data-act="fToggle" style="padding:11px 26px">${I('play')} Start</button>`}
+      <button class="btn ghost" data-act="fReset">${I('x')} Reset</button>
+    </div>
+    <div class="card" style="text-align:left"><div class="card-b">
+      <div class="frow">
+        <div class="fld"><label>Subject</label><select id="fSubj">${state.subjects.map(s=>`<option value="${s.id}" ${F.subjectId===s.id?'selected':''}>${esc(s.name)}</option>`).join('')||'<option value="">—</option>'}</select></div>
+        <div class="fld"><label>Topic (optional)</label><input id="fTopic" value="${esc(F.topic||'')}" placeholder="e.g. Eigenvalues"></div>
+      </div>
+      <div class="fld" style="margin-bottom:0"><label>Session notes</label><input id="fNotes" value="${esc(F.notes||'')}" placeholder="What did you work on?"></div>
+    </div></div>
+  </div>`;
+};
+const Focus={mode:'pomodoro',customMin:50,remaining:25*60,total:25*60,running:false,paused:false,onBreak:false,subjectId:null,topic:'',notes:'',timer:null,
+  start(){this.total=this.remaining=this.mode==='pomodoro'?state.settings.focusMin*60:this.customMin*60;this.running=true;this.paused=false;this.tickSetup();render();},
+  tickSetup(){clearInterval(this.timer);this.timer=setInterval(()=>{if(this.running&&!this.paused){this.remaining--;document.title=fmtClock(this.remaining)+' · StudyOS';
+    const tv=$('#fTime');if(tv){tv.textContent=fmtClock(this.remaining);const rc=$('#fRing');rc&&ringChart(rc,100-(this.remaining/this.total*100));}
+    if(this.remaining<=0){clearInterval(this.timer);
+      if(!this.onBreak&&this.mode==='pomodoro'){this.onBreak=true;this.total=this.remaining=state.settings.breakMin*60;beep();toast('Focus block done — take your break','ok');render();this.tickSetup();}
+      else this.finish(true);}
+  }},1000);},
+  toggle(){if(!this.running){this.start();return;}this.paused=!this.paused;render();},
+  reset(){clearInterval(this.timer);this.running=false;this.paused=false;this.onBreak=false;document.title='AI StudyOS — Personal Study Assistant';this.remaining=this.mode==='pomodoro'?state.settings.focusMin*60:this.customMin*60;this.total=this.remaining;render();},
+  finish(auto){
+    clearInterval(this.timer);const planned=Math.round(this.total/60);
+    const actual=Math.round((this.total-this.remaining)/60);
+    const subjectId=($('#fSubj')||{}).value||this.subjectId||state.subjects[0]?.id||null;
+    const topic=($('#fTopic')||{}).value||this.topic;
+    const notes=($('#fNotes')||{}).value||this.notes;
+    this.running=false;this.paused=false;this.onBreak=false;document.title='AI StudyOS — Personal Study Assistant';
+    if(actual<1&&!auto){this.reset();return;}
+    formModal(auto?'Session complete':'Finish session',[
+      {k:'subjectId',label:'Subject',t:'select',o:state.subjects.map(s=>({v:s.id,l:s.name})),val:subjectId},
+      {k:'topic',label:'Topic',val:topic,half:true},
+      {k:'focus',label:'How focused were you? (1–5)',t:'range',min:1,max:5,val:3,half:true},
+      {k:'notes',label:'Session notes',t:'textarea',val:notes,hint:`Planned ${planned} min · actual ${actual} min (${pct(actual,planned)}% completion)`}
+    ],(v,m)=>{
+      state.sessions.push({id:uid(),date:todayISO(),start:nowHM(),duration:actual,planned,completion:pct(actual,planned),focus:v.focus,...v});
+      const s=subj(v.subjectId);if(s)s.hours=(s.hours||0)+actual;
+      save();m.close();render();toast(`Session logged: ${fmtMin(actual)} of ${subjName(v.subjectId)}`,'ok');
+    },'Log session');
+  }
+};
+function fmtClock(s){return pad(Math.floor(s/60))+':'+pad(s%60);}
+function afterRenderFocus(){const rc=$('#fRing');if(rc)ringChart(rc,100-(Focus.remaining/Focus.total*100),css('--accent'));}
+
+/* ---------- REVISION ---------- */
+Views.revision=function(){
+  const t=todayISO();
+  const due=state.revisions.filter(r=>r.due<=t).sort((a,b)=>a.due<b.due?-1:1);
+  const soon=state.revisions.filter(r=>r.due>t).sort((a,b)=>a.due<b.due?-1:1);
+  const item=(r,over)=>`<div class="row-item"><span class="subj-dot" style="background:${subjColor(r.subjectId)}"></span>
+    <div class="grow"><div class="t">${esc(r.topic)}</div><div class="s">${esc(subjName(r.subjectId))} · ${over?'due '+fmtDate(r.due)+' ('+daysBetween(r.due,t)+'d late)':r.due===t?'due today':'next '+fmtDate(r.due)} · confidence ${confLabel(r.confidence)} · ${r.history.length} review(s)</div></div>
+    <button class="btn sm ${over?'pri':''}" data-act="doRevise:${r.id}">${I('repeat',12)} Revise</button></div>`;
+  return `
+  <div class="page-head"><div><h2>Revision Engine</h2><p>Spaced repetition driven by your own confidence ratings — low confidence returns sooner.</p></div>
+  <button class="btn" data-act="addRevision">${I('plus')} Schedule revision</button></div>
+  <div class="grid" style="grid-template-columns:1fr 1fr;align-items:start">
+    <div class="card"><div class="card-h"><h3>Due now <span class="badge ${due.length?'b-danger':'b-ok'}">${due.length}</span></h3></div><div class="card-b" style="padding-top:4px">
+      ${due.length?due.map(r=>item(r,r.due<t)).join(''):'<div class="empty">Nothing due — nicely paced</div>'}</div></div>
+    <div class="card"><div class="card-h"><h3>Upcoming</h3></div><div class="card-b" style="padding-top:4px">
+      ${soon.length?soon.map(r=>item(r,false)).join(''):'<div class="empty">Nothing scheduled ahead</div>'}</div></div>
+  </div>
+  <div class="card" style="margin-top:16px"><div class="card-h"><h3>How intervals work</h3></div><div class="card-b" style="font-size:13px;color:var(--ink2)">
+    After each review you rate confidence 1–5. The next revision is scheduled after <strong class="num">${REV_INTERVALS.join(', ')}</strong> days respectively. Rating 1–2 flags the topic as weak and prioritizes it in AI recommendations.
+  </div></div>
+  <style>@media(max-width:900px){.grid{grid-template-columns:1fr!important}}</style>`;
+};
+function reviseModal(r){
+  formModal('Revise: '+r.topic,[
+    {k:'confidence',label:'How confident are you now? (1 = lost, 5 = strong)',t:'range',min:1,max:5,val:r.confidence||3,half:false}
+  ],(v,m)=>{
+    scheduleRevision(r.subjectId,r.topic,v.confidence);
+    m.close();render();toast(`Revision logged — next review in ${REV_INTERVALS[v.confidence-1]} days`,'ok');
+  },'Save review');
+}
+
+/* ---------- ANALYTICS ---------- */
+Views.analytics=function(){
+  const t=todayISO();
+  const d14=lastNDays(14).map(d=>({l:pd(d).getDate()+'',v:Math.round(minutesOn(d))}));
+  const w8=[...Array(8)].map((_,i)=>{const w=weekTotals(7-i);return{l:'W'+(i+1),v:Math.round(w.min)};});
+  const m6=[...Array(6)].map((_,i)=>{const d=new Date();d.setMonth(d.getMonth()-(5-i));const key=`${d.getFullYear()}-${pad(d.getMonth()+1)}`;
+    return{l:d.toLocaleDateString(undefined,{month:'short'}),v:Math.round(state.sessions.filter(s=>s.date.startsWith(key)).reduce((a,s)=>a+s.duration,0))};});
+  const bySub={};state.sessions.forEach(s=>bySub[s.subjectId||'none']=(bySub[s.subjectId||'none']||0)+s.duration);
+  const subEntries=Object.entries(bySub).sort((a,b)=>b[1]-a[1]);
+  const totSub=subEntries.reduce((a,[,v])=>a+v,0)||1;
+  const tests=state.tests.slice().sort((a,b)=>a.date<b.date?-1:1).map(x=>({l:fmtDate(x.date).split(',')[0],v:Math.round(x.obtained/x.total*100)}));
+  const prod7=lastNDays(7).map(d=>{const ss=sessionsOn(d);return{l:pd(d).getDate()+'',v:ss.length?Math.round(ss.reduce((a,s)=>a+(s.focus||3),0)/ss.length*20):0};});
+  const rev14=lastNDays(14).map(d=>({l:pd(d).getDate()+'',v:state.revisions.filter(r=>r.history.some(h=>h.date===d)).length}));
+  const out14=lastNDays(14).map(d=>({l:pd(d).getDate()+'',v:state.tasks.filter(x=>x.date&&x.date<=d&&!['Completed','Skipped'].includes(x.status)&&(x.date<d||minutesOn(d)<1)&&d<=t).length?state.tasks.filter(x=>x.date&&x.date<d&&!['Completed','Skipped'].includes(x.status)).filter(x=>x.date<=d).length:0}));
+  const w=weekTotals();
+  return `
+  <div class="page-head"><div><h2>Analytics Center</h2><p>Every number here is computed from your real sessions, tasks and tests.</p></div></div>
+  <div class="stat-strip" style="margin-bottom:16px">
+    <div class="stat"><div class="k">Completion (7d)</div><div class="v num">${w.total?pct(w.done,w.total):0}<small>%</small></div></div>
+    <div class="stat"><div class="k">Study streak</div><div class="v num">${streak()}<small> d</small></div></div>
+    <div class="stat"><div class="k">Sessions logged</div><div class="v num">${state.sessions.length}</div></div>
+    <div class="stat"><div class="k">Avg focus</div><div class="v num">${state.sessions.length?(state.sessions.reduce((a,s)=>a+(s.focus||3),0)/state.sessions.length).toFixed(1):'—'}<small>/5</small></div></div>
+    <div class="stat"><div class="k">Revisions done</div><div class="v num">${state.revisions.reduce((a,r)=>a+r.history.length,0)}</div></div>
+    <div class="stat"><div class="k">Productivity</div><div class="v num">${productivityScore()}<small>/100</small></div></div>
+  </div>
+  <div class="dash-grid">
+    <div class="card"><div class="card-h"><h3>Daily study hours — 14 days</h3></div><div class="card-b"><canvas id="aD" style="width:100%;height:170px"></canvas></div></div>
+    <div class="card"><div class="card-h"><h3>Weekly study time — 8 weeks</h3></div><div class="card-b"><canvas id="aW" style="width:100%;height:170px"></canvas></div></div>
+    <div class="card"><div class="card-h"><h3>Monthly totals — 6 months</h3></div><div class="card-b"><canvas id="aM" style="width:100%;height:160px"></canvas></div></div>
+    <div class="card"><div class="card-h"><h3>Productivity trend (focus) — 7 days</h3></div><div class="card-b"><canvas id="aP" style="width:100%;height:160px"></canvas></div></div>
+    <div class="card"><div class="card-h"><h3>Subject distribution</h3></div><div class="card-b">
+      ${subEntries.length?subEntries.map(([id,v])=>hbar(subjName(id),fmtMin(v),fmtMin(totSub),subjColor(id))).join(''):'<div class="empty">Log focus sessions to see distribution</div>'}</div></div>
+    <div class="card"><div class="card-h"><h3>Test score trend</h3></div><div class="card-b"><canvas id="aT" style="width:100%;height:160px"></canvas></div></div>
+    <div class="card"><div class="card-h"><h3>Revision consistency — 14 days</h3></div><div class="card-b"><canvas id="aR" style="width:100%;height:150px"></canvas></div></div>
+    <div class="card"><div class="card-h"><h3>Outstanding work trend</h3></div><div class="card-b"><canvas id="aO" style="width:100%;height:150px"></canvas></div></div>
+  </div>
+  <div class="card" style="margin-top:16px"><div class="card-h"><h3>Weekly AI review</h3><button class="btn sm pri" data-act="weeklyReview">${I('ai',13)} Generate</button></div><div class="card-b"><div id="wrOut" style="font-size:13.5px;white-space:pre-wrap;color:var(--ink2)">Press generate for a full review of this week with a concrete recommendation.</div></div></div>`;
+};
+function afterRenderAnalytics(){
+  const bind=(id,fn)=>{const c=$(id);if(c){const d=()=>fn(c);d();chartRedraws.push(d);}};
+  bind('#aD',c=>barChart(c,lastNDays(14).map(d=>({l:pd(d).getDate()+'',v:Math.round(minutesOn(d))}))));
+  bind('#aW',c=>barChart(c,[...Array(8)].map((_,i)=>{const w=weekTotals(7-i);return{l:'W'+(i+1),v:Math.round(w.min)};}),{color:css('--info')}));
+  bind('#aM',c=>barChart(c,[...Array(6)].map((_,i)=>{const d=new Date();d.setMonth(d.getMonth()-(5-i));const key=`${d.getFullYear()}-${pad(d.getMonth()+1)}`;
+    return{l:d.toLocaleDateString(undefined,{month:'short'}),v:Math.round(state.sessions.filter(s=>s.date.startsWith(key)).reduce((a,s)=>a+s.duration,0))};})));
+  bind('#aP',c=>lineChart(c,lastNDays(7).map(d=>{const ss=sessionsOn(d);return{l:pd(d).getDate()+'',v:ss.length?Math.round(ss.reduce((a,s)=>a+(s.focus||3),0)/ss.length*20):0};}),{min:0,max:100}));
+  bind('#aT',c=>lineChart(c,state.tests.slice().sort((a,b)=>a.date<b.date?-1:1).map(x=>({l:'',v:Math.round(x.obtained/x.total*100)})),{min:0,max:100,color:css('--amber')}));
+  bind('#aR',c=>barChart(c,lastNDays(14).map(d=>({l:pd(d).getDate()+'',v:state.revisions.filter(r=>r.history.some(h=>h.date===d)).length})),{color:css('--amber')}));
+  bind('#aO',c=>lineChart(c,lastNDays(14).map(d=>({l:'',v:state.tasks.filter(x=>x.date&&x.date<d&&!['Completed','Skipped'].includes(x.status)).length})),{min:0,color:css('--danger')}));
+}
+
+/* ---------- NOTES ---------- */
+let noteQ='';
+Views.notes=function(){
+  const q=noteQ.toLowerCase();
+  const list=state.notes.filter(n=>!q||n.title.toLowerCase().includes(q)||n.body.toLowerCase().includes(q)||(n.tags||[]).join(' ').toLowerCase().includes(q))
+    .sort((a,b)=>(b.fav-a.fav)||(b.created<a.created?-1:1));
+  return `
+  <div class="page-head"><div><h2>Notes &amp; Knowledge Base</h2><p>Linked to subjects and searchable — supports **bold**, headings and lists.</p></div>
+  <button class="btn pri" data-act="addNote">${I('plus')} New note</button></div>
+  <div class="searchbox" style="max-width:420px;margin-bottom:16px"><input id="noteSearch" placeholder="Search notes and tags…" value="${esc(noteQ)}"></div>
+  ${list.length?`<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(270px,1fr))">
+  ${list.map(n=>`<div class="card" style="cursor:pointer" data-act="openNote:${n.id}"><div class="card-b">
+    <div style="display:flex;gap:6px;align-items:flex-start"><strong style="flex:1;font-size:14.5px">${esc(n.title)}</strong>
+    <button class="icon-btn" style="width:26px;height:26px;${n.fav?'color:var(--amber)':''}" data-act="favNote:${n.id}">${I('star',14)}</button></div>
+    <div style="font-size:12.5px;color:var(--ink2);max-height:70px;overflow:hidden">${renderRich(n.body).slice(0,180)}</div>
+    <div style="margin-top:8px;display:flex;gap:5px;flex-wrap:wrap">${n.subjectId?`<span class="badge b-mut">${esc(subjName(n.subjectId))}</span>`:''}${(n.tags||[]).map(t=>`<span class="badge b-acc">${esc(t)}</span>`).join('')}</div>
+  </div></div>`).join('')}</div>`
+  :`<div class="card"><div class="empty">${I('note',30)}<br>No notes${q?' matching your search':''} yet.</div></div>`}`;
+};
+function renderRich(s){
+  return esc(s).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/^### (.+)$/gm,'<strong style="font-family:var(--fd)">$1</strong>').replace(/\n/g,'<br>');
+}
+function noteForm(existing){
+  formModal(existing?'Edit note':'New note',[
+    {k:'title',label:'Title',req:true,val:existing?.title},
+    {k:'subjectId',label:'Subject',t:'select',o:[{v:'',l:'—'},...state.subjects.map(s=>({v:s.id,l:s.name}))],val:existing?.subjectId||''},
+    {k:'tags',label:'Tags (comma separated)',val:(existing?.tags||[]).join(', ')},
+    {k:'body',label:'Note (**bold**, ### heading supported)',t:'textarea',val:existing?.body}
+  ],(v,m)=>{
+    v.tags=v.tags?v.tags.split(',').map(x=>x.trim()).filter(Boolean):[];
+    v.subjectId=v.subjectId||null;
+    if(existing)Object.assign(existing,v);else state.notes.push({id:uid(),fav:false,created:Date.now(),...v});
+    save();m.close();render();toast('Note saved','ok');
+  });
+}
+
+/* ---------- TESTS ---------- */
+Views.tests=function(){
+  const list=state.tests.slice().sort((a,b)=>a.date<b.date?1:-1);
+  const bySub={};state.tests.forEach(x=>{bySub[x.subjectId]=bySub[x.subjectId]||[];bySub[x.subjectId].push(x);});
+  return `
+  <div class="page-head"><div><h2>Test &amp; Result Tracker</h2><p>Scores, trends and subject-wise performance.</p></div>
+  <button class="btn pri" data-act="addTest">${I('plus')} Record test</button></div>
+  <div class="dash-grid">
+  <div class="card"><div class="card-h"><h3>Score trend</h3></div><div class="card-b"><canvas id="tTrend" style="width:100%;height:190px"></canvas></div></div>
+  <div class="card"><div class="card-h"><h3>Subject averages</h3></div><div class="card-b">
+    ${Object.keys(bySub).length?Object.entries(bySub).map(([id,arr])=>hbar(subjName(id),Math.round(arr.reduce((a,x)=>a+x.obtained/x.total,0)/arr.length*100)+'%',100)).join(''):'<div class="empty">Record tests to see performance</div>'}</div></div>
+  </div>
+  ${list.length?`<div class="card" style="margin-top:16px"><div class="card-b" style="padding-top:6px">
+  ${list.map(x=>{const p2=Math.round(x.obtained/x.total*100);
+    return `<div class="row-item"><div class="grow"><div class="t">${esc(x.name)} <span class="badge ${p2>=75?'b-ok':p2>=50?'b-warn':'b-danger'}">${p2}%</span></div>
+    <div class="s">${esc(subjName(x.subjectId))} · ${fmtDate(x.date)} · ${x.obtained}/${x.total}${x.topics?.length?' · '+esc(x.topics.join(', ')):''}${x.mistakes?' · mistakes noted':''}</div></div>
+    <button class="icon-btn" style="width:30px;height:30px" data-act="editTest:${x.id}">${I('edit',14)}</button>
+    <button class="icon-btn" style="width:30px;height:30px;color:var(--danger)" data-act="delTest:${x.id}">${I('trash',14)}</button></div>`;
+  }).join('')}</div></div>`
+  :`<div class="card" style="margin-top:16px"><div class="empty">${I('test',30)}<br>No tests recorded yet.</div></div>`}`;
+};
+function afterRenderTests(){const c=$('#tTrend');if(c){const d=()=>lineChart(c,state.tests.slice().sort((a,b)=>a.date<b.date?-1:1).map(x=>({l:'',v:Math.round(x.obtained/x.total*100)})),{min:0,max:100,color:css('--amber')});d();chartRedraws.push(d);}}
+function testForm(existing){
+  formModal(existing?'Edit test':'Record test result',[
+    {k:'name',label:'Test name',req:true,val:existing?.name},
+    {k:'subjectId',label:'Subject',t:'select',o:state.subjects.map(s=>({v:s.id,l:s.name})),val:existing?.subjectId},
+    {k:'date',label:'Date',t:'date',req:true,val:existing?.date||todayISO()},
+    {k:'total',label:'Total marks',t:'number',min:1,req:true,val:existing?.total,half:true},
+    {k:'obtained',label:'Obtained marks',t:'number',min:0,req:true,val:existing?.obtained,half:true},
+    {k:'topics',label:'Topics tested (comma separated)',val:(existing?.topics||[]).join(', ')},
+    {k:'mistakes',label:'Mistakes / what went wrong',t:'textarea',val:existing?.mistakes}
+  ],(v,m)=>{
+    v.topics=v.topics?v.topics.split(',').map(x=>x.trim()).filter(Boolean):[];
+    if(existing)Object.assign(existing,v);else state.tests.push({id:uid(),...v});
+    save();m.close();render();toast('Test recorded — analytics updated','ok');
+  });
+}
+
+/* ---------- MISTAKES ---------- */
+Views.mistakes=function(){
+  const list=state.mistakes.slice().sort((a,b)=>a.date<b.date?1:-1);
+  const byTopic={};state.mistakes.forEach(m2=>{const k=subjName(m2.subjectId)+' · '+m2.topic;byTopic[k]=(byTopic[k]||0)+1;});
+  const rep=Object.entries(byTopic).filter(([,v])=>v>=2);
+  return `
+  <div class="page-head"><div><h2>Mistake Book</h2><p>Mistakes link to revision automatically — repeated patterns surface here.</p></div>
+  <button class="btn pri" data-act="addMistake">${I('plus')} Record mistake</button></div>
+  ${rep.length?`<div class="card" style="margin-bottom:16px;border-color:var(--amber)"><div class="card-h"><h3 style="color:var(--amber)">Repeated patterns</h3><button class="btn sm" data-act="askAI">${I('ai',12)} Analyze</button></div><div class="card-b">${rep.map(([k,v])=>`<span class="badge b-warn" style="margin:0 6px 6px 0">${esc(k)} × ${v}</span>`).join('')}</div></div>`:''}
+  ${list.length?`<div class="card"><div class="card-b" style="padding-top:6px">
+  ${list.map(m2=>`<div class="row-item" style="align-items:flex-start"><div class="grow"><div class="t">${esc(m2.question)}</div>
+    <div class="s">${esc(subjName(m2.subjectId))} · ${esc(m2.topic||'general')} · ${esc(m2.type)} · ${fmtDate(m2.date)}</div>
+    ${m2.solution?`<div style="font-size:12.5px;margin-top:5px;color:var(--ink2)"><strong>Fix:</strong> ${esc(m2.solution)}</div>`:''}</div>
+    <button class="icon-btn" style="width:30px;height:30px" data-act="editMistake:${m2.id}">${I('edit',14)}</button>
+    <button class="icon-btn" style="width:30px;height:30px;color:var(--danger)" data-act="delMistake:${m2.id}">${I('trash',14)}</button></div>`).join('')}</div></div>`
+  :`<div class="card"><div class="empty">${I('mistake',30)}<br>Log your first mistake — each one becomes a revision opportunity.</div></div>`}`;
+};
+function mistakeForm(existing){
+  formModal(existing?'Edit mistake':'Record mistake',[
+    {k:'question',label:'Question / problem',req:true,val:existing?.question},
+    {k:'subjectId',label:'Subject',t:'select',o:state.subjects.map(s=>({v:s.id,l:s.name})),val:existing?.subjectId},
+    {k:'topic',label:'Topic',val:existing?.topic,half:true},
+    {k:'type',label:'Mistake type',t:'select',o:['concept gap','calculation error','misread question','careless','ran out of time','guess gone wrong'],val:existing?.type||'concept gap',half:true},
+    {k:'solution',label:'Correct solution',t:'textarea',val:existing?.solution},
+    {k:'explanation',label:'Why it happened / lesson',t:'textarea',val:existing?.explanation}
+  ],(v,m)=>{
+    v.date=existing?.date||todayISO();
+    if(existing)Object.assign(existing,v);else state.mistakes.push({id:uid(),...v});
+    if(v.topic&&v.subjectId)scheduleRevision(v.subjectId,v.topic,2); // mistakes → earlier revision
+    save();m.close();render();toast('Mistake saved — linked to revision in 3 days','ok');
+  });
+}
+
+/* ---------- GOALS ---------- */
+Views.goals=function(){
+  const types=['daily','weekly','monthly','academic','long-term'];
+  return `
+  <div class="page-head"><div><h2>Goals</h2><p>Daily to long-term, with milestones and visual progress.</p></div>
+  <button class="btn pri" data-act="addGoal">${I('plus')} New goal</button></div>
+  <div class="subj-grid">
+  ${state.goals.length?state.goals.map(g=>{const pr=g.milestones?.length?pct(g.milestones.filter(m2=>m2.done).length,g.milestones.length):g.progress||0;
+    const late=g.deadline&&g.deadline<todayISO()&&pr<100;
+    return `<div class="subj-card"><div style="display:flex;gap:8px;align-items:flex-start"><div style="flex:1"><strong style="font-size:15px">${esc(g.title)}</strong>
+    <div style="margin:4px 0 10px"><span class="badge b-acc">${esc(g.type)}</span> ${g.deadline?`<span class="badge ${late?'b-danger':'b-mut'}">${late?'was due':'due'} ${fmtDate(g.deadline)}</span>`:''}</div></div>
+    <button class="icon-btn" style="width:30px;height:30px;color:var(--danger)" data-act="delGoal:${g.id}">${I('trash',14)}</button></div>
+    <div style="display:flex;justify-content:space-between;font-size:12.5px;font-weight:700;margin-bottom:4px"><span>${esc(g.target||'Progress')}</span><span class="num">${pr}%</span></div>
+    <div class="pbar ${pr<40?'danger':''}"><i style="width:${pr}%"></i></div>
+    ${g.milestones?.length?`<div style="margin-top:10px">${g.milestones.map((m2,i)=>`<label style="display:flex;gap:8px;align-items:center;font-size:13px;padding:3px 0;cursor:pointer"><input type="checkbox" ${m2.done?'checked':''} data-act="milestone:${g.id}:${i}" style="width:auto"> <span style="${m2.done?'text-decoration:line-through;color:var(--ink3)':''}">${esc(m2.text)}</span></label>`).join('')}</div>`:''}
+    </div>`;
+  }).join(''):`<div class="card" style="grid-column:1/-1"><div class="empty">${I('goal',30)}<br>No goals yet — set one to give your week direction.</div></div>`}
+  </div>`;
+};
+function goalForm(){
+  formModal('New goal',[
+    {k:'title',label:'Goal',req:true,ph:'Finish Calculus syllabus'},
+    {k:'type',label:'Type',t:'select',o:['daily','weekly','monthly','academic','long-term'],val:'weekly'},
+    {k:'target',label:'Target description',val:'',half:true,ph:'All 12 chapters + 3 mock tests'},
+    {k:'deadline',label:'Deadline',t:'date',half:true},
+    {k:'milestones',label:'Milestones (one per line)',t:'textarea',ph:'Chapter 1–3 done\nFirst mock test'}
+  ],(v,m)=>{
+    v.milestones=(v.milestones||'').split('\n').map(x=>x.trim()).filter(Boolean).map(text=>({text,done:false}));
+    state.goals.push({id:uid(),progress:0,...v});save();m.close();render();toast('Goal created','ok');
+  },'Create goal');
+}
+
+/* ---------- HABITS ---------- */
+Views.habits=function(){
+  const days=lastNDays(14);
+  return `
+  <div class="page-head"><div><h2>Habit Tracker</h2><p>Consistency beats intensity. Tap a square to check a day.</p></div>
+  <button class="btn pri" data-act="addHabit">${I('plus')} Add habit</button></div>
+  ${state.habits.length?`<div class="card" style="overflow-x:auto"><div class="card-b">
+    <div class="habit-grid" style="grid-template-columns:1fr auto">
+      <div></div><div style="display:flex">${days.map(d=>`<div class="habit-cell" style="font-size:9.5px;color:var(--ink3)">${pd(d).getDate()}</div>`).join('')}</div>
+      ${state.habits.map(h=>{
+        let st=0,d=addDays(todayISO(),-(h.log[todayISO()]?0:1));
+        while(h.log[d]&&st<3650){st++;d=addDays(d,-1);}
+        return `<><div style="display:flex;align-items:center;gap:9px;padding:3px 10px 3px 0;border-top:1px solid var(--line)"><strong style="font-size:13.5px">${esc(h.name)}</strong>${st>0?`<span class="badge b-ok">${I('flame',11)} ${st}</span>`:''}<button class="icon-btn" style="width:26px;height:26px;color:var(--danger)" data-act="delHabit:${h.id}">${I('trash',12)}</button></div>
+        <div style="display:flex;border-top:1px solid var(--line)">${days.map(d2=>`<div class="habit-cell"><button class="${h.log[d2]?'on':''}" data-act="habit:${h.id}:${d2}" aria-label="${esc(h.name)} ${d2}"></button></div>`).join('')}</div></>`;
+      }).join('')}
+    </div></div></div>
+  <style>.habit-grid > .frag{display:contents}</style>`
+  :`<div class="card"><div class="empty">${I('habit',30)}<br>Track habits like daily revision, reading or sleep routine.</div></div>`}`;
+};
+function afterRenderHabits(){$$('#main .habit-grid > .frag').forEach(f=>{const tpl=document.createElement('template');tpl.innerHTML=f.innerHTML.replace(/^<>/,'').replace(/<>$/,'');f.replaceWith(tpl.content);});}
+
+/* ---------- AI ASSISTANT ---------- */
+let chatBusy=false;
+Views.assistant=function(){
+  const chips=['What should I study now?','Plan my day',"I'm behind — catch-up plan",'Which subjects am I weak in?','What should I revise today?','How much did I study this week?','Exam plan','Weekly review','Quiz me','Make flashcards'];
+  return `
+  <div class="page-head"><div><h2>AI Study Assistant</h2><p>${AIService.isConfigured()?'Connected to your own API (key stays in this browser).':'Running the built-in offline coach on your local data — no data leaves this device.'}</p></div>
+  <button class="btn ${AIService.isConfigured()?'':'pri'}" data-act="nav:settings">${I('set')} AI settings</button></div>
+  <div class="chat-wrap card"><div class="card-b" style="flex:1;display:flex;flex-direction:column;overflow:hidden">
+    <div class="chat-log" id="chatLog">
+      ${state.aiChats.length?state.aiChats.map(m2=>`<div class="msg ${m2.role==='user'?'user':'ai'}">${esc(m2.text)}${m2.role!=='user'?'<span class="src">AI StudyOS · offline coach, based on your local data</span>':''}</div>`).join('')
+      :`<div class="msg ai">Hi ${esc(state.user.name||'there')} — I'm your study coach. I read your tasks, sessions, revisions, exams and tests, then give grounded advice. Try a suggestion below, or ask anything.</div>`}
+    </div>
+    <div class="chips">${chips.map(c=>`<button data-act="chip" data-q="${esc(c)}">${esc(c)}</button>`).join('')}</div>
+    <div class="chat-in"><input id="chatIn" placeholder="Ask your study coach…"><button class="btn pri" data-act="chatSend" id="chatSendBtn">${I('send')} Send</button></div>
+  </div></div>`;
+};
+async function sendChat(text){
+  if(!text.trim()||chatBusy)return;
+  chatBusy=true;
+  state.aiChats.push({role:'user',text,when:Date.now()});
+  renderChat();save();
+  const log=$('#chatLog');log.scrollTop=log.scrollHeight;
+  const thinking=modal('','<div style="padding:6px 2px;color:var(--ink3);font-size:13.5px">Thinking through your data…</div>',null,{static:true});
+  let reply;
+  try{reply=await AIService.respond(text);}
+  catch(e){reply='Something went wrong while reasoning — please try again.';}
+  thinking.close();
+  state.aiChats.push({role:'ai',text:reply,when:Date.now()});
+  if(state.aiChats.length>80)state.aiChats.splice(0,state.aiChats.length-80);
+  save();renderChat();chatBusy=false;
+}
+function renderChat(){
+  const log=$('#chatLog');if(!log)return;
+  log.innerHTML=state.aiChats.map(m2=>`<div class="msg ${m2.role==='user'?'user':'ai'}">${esc(m2.text)}${m2.role!=='user'?'<span class="src">AI StudyOS · based on your local data</span>':''}</div>`).join('');
+  log.scrollTop=log.scrollHeight;
+}
+
+/* ---------- SETTINGS ---------- */
+Views.settings=function(){
+  const s=state.settings;
+  return `
+  <div class="page-head"><div><h2>Settings</h2><p>Profile, targets, appearance, AI, and your data — everything stays local.</p></div></div>
+  <div class="dash-grid">
+  <div class="card"><div class="card-h"><h3>Profile &amp; study target</h3></div><div class="card-b">
+    <div class="frow"><div class="fld"><label>Name</label><input id="setName" value="${esc(state.user.name)}"></div>
+    <div class="fld"><label>Main academic goal</label><input id="setGoal" value="${esc(state.user.goal)}"></div></div>
+    <div class="frow">
+      <div class="fld"><label>Daily study target (minutes)</label><input type="number" id="setTarget" min="15" value="${state.user.targetMin}"></div>
+      <div class="fld"><label>Focus session default (min)</label><input type="number" id="setFocus" min="5" value="${s.focusMin}"></div>
+      <div class="fld"><label>Wake time</label><input type="time" id="setWake" value="${state.user.wake}"></div>
+      <div class="fld"><label>Sleep time</label><input type="time" id="setSleep" value="${state.user.sleep}"></div></div>
+    <button class="btn pri" data-act="saveProfile">${I('check')} Save profile</button>
+  </div></div>
+  <div class="card"><div class="card-h"><h3>Appearance &amp; accessibility</h3></div><div class="card-b">
+    <label style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);cursor:pointer"><span>Dark mode</span><input type="checkbox" ${s.theme==='dark'?'checked':''} data-act="setTheme" style="width:auto;accent-color:var(--accent)"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);cursor:pointer"><span>Reduced motion</span><input type="checkbox" ${s.reduceMotion?'checked':''} data-act="setRM" style="width:auto;accent-color:var(--accent)"></label>
+    <div style="padding:9px 0;font-size:12.5px;color:var(--ink3)">Keyboard: <kbd>/</kbd> focuses global search · <kbd>Esc</kbd> closes dialogs. All controls are focusable and labelled.</div>
+  </div></div>
+  <div class="card"><div class="card-h"><h3>Notifications</h3></div><div class="card-b">
+    <label style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);cursor:pointer"><span>Sound</span><input type="checkbox" ${s.sound?'checked':''} data-act="setSound" style="width:auto;accent-color:var(--accent)"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);cursor:pointer"><span>Browser notifications</span><input type="checkbox" ${s.browserNotif?'checked':''} data-act="setBN" style="width:auto;accent-color:var(--accent)"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);cursor:pointer"><span>Quiet hours (no popups/sound)</span><input type="checkbox" ${s.quiet?'checked':''} data-act="setQuiet" style="width:auto;accent-color:var(--accent)"></label>
+    <div class="frow" style="margin-top:8px"><div class="fld"><label>Quiet from</label><input type="time" id="qStart" value="${s.quietStart}"></div>
+    <div class="fld"><label>Quiet until</label><input type="time" id="qEnd" value="${s.quietEnd}"></div></div>
+    <button class="btn" data-act="saveQuiet">${I('check')} Save quiet hours</button>
+  </div></div>
+  <div class="card"><div class="card-h"><h3>AI assistant</h3><span class="badge ${AIService.isConfigured()?'b-ok':'b-mut'}">${AIService.isConfigured()?'API connected':'offline mode'}</span></div><div class="card-b">
+    <p style="font-size:13px;color:var(--ink2);margin-bottom:10px">Without an API, the offline coach answers using your real local data. Connecting an API is <strong>optional</strong> — requests go directly from your browser to the provider; your key is stored only in this browser and never sent anywhere else.</p>
+    <label style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;cursor:pointer"><span>Enable external AI API</span><input type="checkbox" ${state.aiConfig.enabled?'checked':''} data-act="setAI" style="width:auto;accent-color:var(--accent)"></label>
+    <div class="frow"><div class="fld"><label>Base URL (OpenAI-compatible)</label><input id="aiUrl" value="${esc(state.aiConfig.baseUrl)}" placeholder="https://api.openai.com/v1"></div>
+    <div class="fld"><label>Model</label><input id="aiModel" value="${esc(state.aiConfig.model)}" placeholder="gpt-4o-mini"></div></div>
+    <div class="fld"><label>API key</label><input id="aiKey" type="password" value="${esc(state.aiConfig.key)}" placeholder="sk-…"></div>
+    <button class="btn pri" data-act="saveAI">${I('check')} Save AI config</button>
+  </div></div>
+  <div class="card"><div class="card-h"><h3>Data — backup &amp; restore</h3></div><div class="card-b">
+    <p style="font-size:13px;color:var(--ink2);margin-bottom:12px">Everything autosaves to IndexedDB (with a localStorage mirror) after every change. Export creates a full JSON backup.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn pri" data-act="export">${I('dl')} Backup data</button>
+      <button class="btn" data-act="import">${I('ul')} Restore data</button>
+      <button class="btn" data-act="sample">${I('run')} Load sample data</button>
+      <button class="btn danger" data-act="reset">${I('trash')} Reset everything</button>
+    </div>
+    <div class="hint" style="margin-top:10px">Owner mode: you already have full control — export, restore, and reset are the advanced data operations.</div>
+  </div></div>
+  <div class="card"><div class="card-h"><h3>About your data</h3></div><div class="card-b" style="font-size:13.5px;color:var(--ink2)">
+    🔒→ ${I('check',14)} Your study data is stored <strong>locally on this device</strong>. Nothing is sent anywhere unless you personally enable and configure an external AI API above.
+  </div></div>
+  </div>`;
+};
+
+/* ════════════════════════════ 10. ACTIONS ════════════════════════════ */
+const Actions={
+  nav:k=>{currentView=k;render();closeSidebar();},
+  openSidebar(){ $('#sidebar').classList.add('open');$('#scrim').classList.add('open');},
+  closeSidebar(){$('#sidebar').classList.remove('open');$('#scrim').classList.remove('open');},
+  toggleTheme(){state.settings.theme=state.settings.theme==='light'?'dark':'light';applyTheme();save();render();},
+  toggleNotifPanel(){const p=$('#npanel');const open=p.classList.toggle('open');if(open){state.notifications.forEach(n=>n.read=true);save();renderNotifPanel();updateBell();}},
+  clearNotifs(){state.notifications=[];save();renderNotifPanel();updateBell();},
+  // tasks
+  addTask(){ if(!state.subjects.length){toast('Add a subject first','warn');return subjectForm();} taskForm();},
+  editTask(id){const t=state.tasks.find(x=>x.id===id);if(t)taskForm(t);else calEventModal('task',id);},
+  completeTask(id){
+    const t=state.tasks.find(x=>x.id===id);if(!t)return;
+    if(t.status==='Completed'){t.status='Not Started';save();render();return;}
+    t.status='Completed';t.actual=t.actual||t.est||45;save();render();
+    toast(`Task completed — nice work`,'ok');
+    if(t.topic&&t.subjectId){
+      formModal('How confident are you?',[{k:'c',label:'Confidence for "'+t.topic+'" (1 = lost, 5 = strong) — this sets your next revision date',t:'range',min:1,max:5,val:3,half:false}],
+      (v,m)=>{scheduleRevision(t.subjectId,t.topic,v.c);m.close();toast(`Revision scheduled in ${REV_INTERVALS[v.c-1]} days`,'ok');},'Schedule revision');
+    }
+  },
+  // routine
+  addRoutine(){routineForm();},
+  editRoutine(id){const b=state.routine.find(x=>x.id===id);if(b)routineForm(b);},
+  delRoutine(id){confirmModal('Delete this routine block?',()=>{state.routine=state.routine.filter(x=>x.id!==id);save();render();toast('Routine block deleted','ok');},{label:'Delete'});},
+  rday:d=>{Views.routine._day=Number(d);render();},
+  logMissed(id){const b=state.routine.find(x=>x.id===id);if(!b)return;
+    formModal('Log catch-up session',[{k:'duration',label:'Minutes studied (or planned)',t:'number',min:5,val:Math.min(60,toMin(b.end)-toMin(b.start)),half:false}],(v,m)=>{
+      state.sessions.push({id:uid(),date:todayISO(),start:nowHM(),duration:v.duration,planned:v.duration,completion:100,focus:3,subjectId:b.subjectId,topic:b.title,notes:'Catch-up for missed routine block'});
+      const s=subj(b.subjectId);if(s)s.hours=(s.hours||0)+v.duration;
+      save();m.close();render();toast('Catch-up session logged','ok');});},
+  // outstanding
+  reschedToday(kind,id){Actions._resched(kind,id,todayISO());},
+  reschedTmr(kind,id){Actions._resched(kind,id,addDays(todayISO(),1));},
+  _resched(kind,id,date){
+    if(kind==='Task'){const t=state.tasks.find(x=>x.id===id);if(t){t.date=date;save();render();toast('Moved to '+fmtDate(date),'ok');}}
+    else if(kind==='Revision'){const r=state.revisions.find(x=>x.id===id);if(r){r.due=date;save();render();toast('Revision moved','ok');}}
+    else if(kind==='Assignment'){toast('Assignments keep their real submission date — plan a work task instead','warn');}
+  },
+  focusOn(kind,id){
+    if(kind==='Task'){const t=state.tasks.find(x=>x.id===id);if(t){Focus.subjectId=t.subjectId;Focus.topic=t.topic||t.title;}}
+    if(kind==='Revision'){const r=state.revisions.find(x=>x.id===id);if(r){Focus.subjectId=r.subjectId;Focus.topic=r.topic;}}
+    currentView='focus';Actions._autoStart=true;render();Focus.start();
+  },
+  catchUp(){
+    const p=catchUpPlan();
+    const html=`<div style="font-size:13.5px">
+      <strong>Today</strong> — ${fmtMin(p.capToday)} planned${p.today.length?':<ul style="margin:6px 0 12px 18px">'+p.today.map(i=>`<li>${esc(i.title)} <span class="badge b-mut">${fmtMin(i.est)}</span></li>`).join('')+'</ul>':' — keep it light.'}
+      <strong>Tomorrow</strong> — ${fmtMin(p.capTmr)} planned${p.tomorrow.length?':<ul style="margin:6px 0 12px 18px">'+p.tomorrow.map(i=>`<li>${esc(i.title)} <span class="badge b-mut">${fmtMin(i.est)}</span></li>`).join('')+'</ul>':'. Nothing forced.'}
+      ${p.later.length?`<strong>Can wait</strong> — ${p.later.map(i=>esc(i.title)).join(', ')}`:''}
+      <p class="hint" style="margin-top:10px">Applying moves each item's planned date (nothing is deleted or permanently changed). The plan stays realistic — never more than your daily target.</p></div>`;
+    const m=modal('Your catch-up plan',html,`<button class="btn ghost" data-n>Not now</button><button class="btn pri" data-y>${I('check')} Apply plan</button>`);
+    m.el.querySelector('[data-n]').onclick=m.close;
+    m.el.querySelector('[data-y]').onclick=()=>{
+      p.today.forEach(i=>{if(i.obj.date)i.obj.date=todayISO();});
+      p.tomorrow.forEach(i=>{if(i.obj.date)i.obj.date=addDays(todayISO(),1);});
+      save();m.close();render();toast('Catch-up plan applied','ok');
+    };
+  },
+  whatNow(){
+    const r=recommendNow();
+    if(!r){infoModal('Recommended now',`<p>Your board is clear. Options: start an optional practice session, get ahead on an upcoming deadline, or rest deliberately — rest is part of the plan.</p>`);return;}
+    modal('Recommended now',`
+      <div style="font-size:19px;font-weight:700;font-family:var(--fd)">${esc(subjName(r.subject))} — ${esc(r.title)}</div>
+      <div style="display:flex;gap:7px;margin:12px 0;flex-wrap:wrap">
+        <span class="chip">${I('clock',11)} ${r.min} minutes</span>
+        ${r.why.some(w2=>/overdue|due today|exam|low/.test(w2))?'<span class="badge b-danger">High priority</span>':'<span class="badge b-warn">Medium</span>'}
+        ${r.targetLeft>0?`<span class="chip">${I('flame',11)} ${fmtMin(r.targetLeft)} of target left</span>`:''}
+      </div>
+      <div style="font-size:13.5px;color:var(--ink2)"><strong>Why:</strong> this topic is ${r.why.join(' and ')||'the best fit for your remaining time'}.</div>`,
+      `<button class="btn ghost" data-n>Later</button><button class="btn pri" data-y>${I('play')} Start Now</button>`);
+    const mm=modalStack[modalStack.length-1];
+    mm.el.querySelector('[data-n]').onclick=mm.close;
+    mm.el.querySelector('[data-y]').onclick=()=>{mm.close();Actions.focusOn(r.kind,r.obj.id);};
+  },
+  startNow(){const r=recommendNow();if(r)Actions.focusOn(r.kind,r.obj.id);},
+  startFocus(){currentView='focus';render();},
+  addSession(){ // quick manual log
+    formModal('Log a study session',[
+      {k:'subjectId',label:'Subject',t:'select',o:state.subjects.map(s=>({v:s.id,l:s.name}))},
+      {k:'topic',label:'Topic',half:true},{k:'duration',label:'Minutes',t:'number',min:1,val:30,half:true},
+      {k:'focus',label:'Focus rating 1–5',t:'range',min:1,max:5,val:3,half:false},
+      {k:'notes',label:'Notes',t:'textarea'}
+    ],(v,m)=>{state.sessions.push({id:uid(),date:todayISO(),start:nowHM(),planned:v.duration,completion:100,...v});
+      const s=subj(v.subjectId);if(s)s.hours=(s.hours||0)+v.duration;
+      save();m.close();render();toast(`Logged ${fmtMin(v.duration)}`,'ok');},'Log session');
+  },
+  // subjects
+  addSubject(){subjectForm();},
+  editSubject(id){const s=subj(id);if(s)subjectForm(s);},
+  delSubject(id){confirmModal(`Delete <strong>${esc(subjName(id))}</strong> and all its chapters/topics? Sessions, tasks and revisions keep their records but lose the link.`,()=>{
+    state.subjects=state.subjects.filter(x=>x.id!==id);save();render();toast('Subject deleted','ok');},{label:'Delete'});},
+  toggleCh(sid,cid){const k=sid+':'+cid;Views.subjects._open=Views.subjects._open===k?null:k;render();},
+  addChapter(sid){formModal('New chapter',[{k:'name',label:'Chapter name',req:true}],(v,m)=>{subj(sid).chapters.push({id:uid(),name:v.name,topics:[]});save();m.close();render();},'Add chapter');},
+  addTopic(arg){const[sid,cid]=arg.split(':');
+    formModal('New topic',[{k:'name',label:'Topic name',req:true}],(v,m)=>{
+      subj(sid).chapters.find(c=>c.id===cid).topics.push({id:uid(),name:v.name,done:false});
+      save();m.close();Views.subjects._open=sid+':'+cid;render();},'Add topic');},
+  subjAddTopicQuick(sid){
+    const s=subj(sid);
+    formModal('Quick add — '+s.name,[
+      {k:'chapter',label:'Chapter',req:true,val:s.chapters[0]?.name||''},
+      {k:'topics',label:'Topics (one per line)',t:'textarea',req:true}
+    ],(v,m)=>{
+      let c=s.chapters.find(c2=>c2.name.toLowerCase()===v.chapter.toLowerCase());
+      if(!c){c={id:uid(),name:v.chapter,topics:[]};s.chapters.push(c);}
+      v.topics.split('\n').map(x=>x.trim()).filter(Boolean).forEach(t=>c.topics.push({id:uid(),name:t,done:false}));
+      save();m.close();render();toast('Topics added','ok');
+    });
+  },
+  topicDone(arg){const[sid,cid,tid]=arg.split(':');const s=subj(sid),c=s.chapters.find(x=>x.id===cid),t=c.topics.find(x=>x.id===tid);
+    if(t.done){t.done=false;save();render();return;}
+    formModal('Topic completed: '+t.name,[{k:'c',label:'Confidence 1–5 (drives revision spacing)',t:'range',min:1,max:5,val:3,half:false}],
+      (v,m)=>{markTopicDone(s,c,t,v.c);m.close();render();toast(`Topic done — revision in ${REV_INTERVALS[v.c-1]} days`,'ok');},'Save');},
+  delTopic(arg){const[sid,cid,tid]=arg.split(':');const c=subj(sid).chapters.find(x=>x.id===cid);
+    c.topics=c.topics.filter(x=>x.id!==tid);save();render();},
+  // exams
+  addExam(){if(!state.subjects.length){toast('Add a subject first','warn');return subjectForm();}examForm();},
+  editExam(id){const e=state.exams.find(x=>x.id===id);if(e)examForm(e);},
+  delExam(id){confirmModal('Delete this exam?',()=>{state.exams=state.exams.filter(x=>x.id!==id);save();render();},{label:'Delete'});},
+  examPlan(id){
+    const e=state.exams.find(x=>x.id===id);if(!e)return;
+    AIService.createExamPlan(e).then(text=>{
+      const mm=modal('Exam plan — '+e.name,`<div style="font-size:13.5px;white-space:pre-wrap">${esc(text)}</div>`,
+      `<button class="btn ghost" data-n>Close</button>${e.chapters?.length?`<button class="btn pri" data-y>${I('check')} Create prep tasks</button>`:''}`,);
+      mm.el.querySelector('[data-n]').onclick=mm.close;
+      const y=mm.el.querySelector('[data-y]');
+      if(y)y.onclick=()=>{
+        const t=todayISO(),days=Math.max(1,daysBetween(t,e.date));
+        const perDay=Math.max(1,Math.ceil(e.chapters.length/Math.max(1,days-2)));
+        let d=0;
+        for(let i=0;i<e.chapters.length;i+=perDay){
+          d++;state.tasks.push({id:uid(),title:`${e.name}: ${e.chapters.slice(i,i+perDay).join(', ')}`,subjectId:e.subjectId,date:addDays(t,d-1),deadline:e.date,priority:'high',est:60,type:'exam-prep',status:'Not Started'});
+        }
+        save();mm.close();currentView='planner';render();toast(`${d} prep tasks created`,'ok');
+      };
+    });
+  },
+  examAddTask(id){const e=state.exams.find(x=>x.id===id);
+    taskForm({title:'Prepare: '+e.name,subjectId:e.subjectId,deadline:e.date,date:todayISO(),priority:'high',type:'exam-prep',est:60});},
+  // assignments
+  addAssign(){if(!state.subjects.length){toast('Add a subject first','warn');return subjectForm();}assignForm();},
+  editAssign(id){const a=state.assignments.find(x=>x.id===id);if(a)assignForm(a);else calEventModal('assign',id);},
+  delAssign(id){confirmModal('Delete this assignment?',()=>{state.assignments=state.assignments.filter(x=>x.id!==id);save();render();},{label:'Delete'});},
+  assignProg(id){const a=state.assignments.find(x=>x.id===id);if(!a)return;
+    formModal('Update progress — '+a.title,[{k:'progress',label:'Progress %',t:'range',min:0,max:100,val:a.progress||0,half:false}],(v,m)=>{a.progress=v.progress;if(v.progress>=100)a.progress=100;save();m.close();render();toast('Progress updated','ok');});},
+  // focus
+  fmode(m2){Focus.mode=m2;Focus.reset();},
+  fToggle(){Focus.toggle();},
+  fFinish(){Focus.finish(false);},
+  fReset(){Focus.reset();},
+  // revision
+  doRevise(id){const r=state.revisions.find(x=>x.id===id);if(r)reviseModal(r);},
+  addRevision(){
+    formModal('Schedule revision',[
+      {k:'subjectId',label:'Subject',t:'select',o:state.subjects.map(s=>({v:s.id,l:s.name}))},
+      {k:'topic',label:'Topic',req:true,half:true},
+      {k:'confidence',label:'Current confidence 1–5',t:'range',min:1,max:5,val:3,half:true}
+    ],(v,m)=>{scheduleRevision(v.subjectId,v.topic,v.confidence);m.close();render();toast('Revision scheduled','ok');});
+  },
+  // notes
+  addNote(){noteForm();},
+  openNote(id){const n=state.notes.find(x=>x.id===id);if(!n)return;
+    const m=modal(n.title,`<div style="font-size:14px;line-height:1.7">${renderRich(n.body)}</div>
+      <div style="margin-top:14px;display:flex;gap:6px;flex-wrap:wrap">${n.subjectId?`<span class="badge b-mut">${esc(subjName(n.subjectId))}</span>`:''}${(n.tags||[]).map(t=>`<span class="badge b-acc">${esc(t)}</span>`).join('')}</div>`,
+      `<button class="btn" data-e>${I('edit',13)} Edit</button>`);
+    m.el.querySelector('[data-e]').onclick=()=>{m.close();noteForm(n);};},
+  favNote(id){const n=state.notes.find(x=>x.id===id);n.fav=!n.fav;save();render();},
+  // tests & mistakes
+  addTest(){if(!state.subjects.length){toast('Add a subject first','warn');return subjectForm();}testForm();},
+  editTest(id){const t=state.tests.find(x=>x.id===id);if(t)testForm(t);},
+  delTest(id){confirmModal('Delete this test record?',()=>{state.tests=state.tests.filter(x=>x.id!==id);save();render();},{label:'Delete'});},
+  addMistake(){if(!state.subjects.length){toast('Add a subject first','warn');return subjectForm();}mistakeForm();},
+  editMistake(id){const m2=state.mistakes.find(x=>x.id===id);if(m2)mistakeForm(m2);},
+  delMistake(id){confirmModal('Delete this mistake entry?',()=>{state.mistakes=state.mistakes.filter(x=>x.id!==id);save();render();},{label:'Delete'});},
+  // goals & habits
+  addGoal(){goalForm();},
+  delGoal(id){confirmModal('Delete this goal?',()=>{state.goals=state.goals.filter(x=>x.id!==id);save();render();},{label:'Delete'});},
+  addHabit(){formModal('New habit',[{k:'name',label:'Habit name',req:true,ph:'Daily revision'}],(v,m)=>{state.habits.push({id:uid(),name:v.name,log:{}});save();m.close();render();},'Add habit');},
+  delHabit(id){confirmModal('Delete this habit?',()=>{state.habits=state.habits.filter(x=>x.id!==id);save();render();},{label:'Delete'});},
+  habit(arg){const[id,d]=arg.split(':');const h=state.habits.find(x=>x.id===id);if(!h)return;
+    if(h.log[d])delete h.log[d];else h.log[d]=true;save();render();},
+  // assistant
+  chip(el){sendChat(el.dataset.q);},
+  async chatSend(){const inp=$('#chatIn');const v=inp.value;inp.value='';await sendChat(v);},
+  async askAI(){currentView='assistant';render();setTimeout(()=>$('#chatIn')?.focus(),100);},
+  weeklyReview(){AIService.reviewWeekly().then(t=>{const o=$('#wrOut');if(o){o.textContent=t;toast('Weekly review ready','ok');}});},
+  // planner filter
+  pfilter(k){plannerFilter=k;render();},
+  // calendar
+  calNav(dir){
+    const d=pd(calAnchor);
+    if(calMode==='month')d.setMonth(d.getMonth()+Number(dir));
+    else if(calMode==='week')d.setDate(d.getDate()+7*Number(dir));
+    else d.setDate(d.getDate()+Number(dir));
+    calAnchor=dISO(d);render();
+  },
+  calToday(){calAnchor=todayISO();render();},
+  calMode(m2){calMode=m2;render();},
+  calDay(iso){calAnchor=iso;calMode='day';render();},
+  calEv(arg){const[type,id]=arg.split(':');calEventModal(type,id);},
+  // settings
+  saveProfile(){
+    state.user.name=$('#setName').value.trim();state.user.goal=$('#setGoal').value.trim();
+    state.user.targetMin=Math.max(15,Number($('#setTarget').value)||180);
+    state.settings.focusMin=Math.max(5,Number($('#setFocus').value)||25);
+    state.user.wake=$('#setWake').value||'06:30';state.user.sleep=$('#setSleep').value||'23:00';
+    saveNow();toast('Profile saved','ok');render();
+  },
+  setTheme(el){state.settings.theme=el.checked?'dark':'light';applyTheme();save();render();},
+  setRM(el){state.settings.reduceMotion=el.checked;document.body.classList.toggle('rm',el.checked);save();},
+  setSound(el){state.settings.sound=el.checked;save();if(el.checked)beep();},
+  setBN(el){state.settings.browserNotif=el.checked;save();
+    if(el.checked&&'Notification'in window&&Notification.permission==='default')Notification.requestPermission();},
+  setQuiet(el){state.settings.quiet=el.checked;save();},
+  saveQuiet(){state.settings.quietStart=$('#qStart').value||'22:30';state.settings.quietEnd=$('#qEnd').value||'07:30';save();toast('Quiet hours saved','ok');},
+  setAI(el){state.aiConfig.enabled=el.checked;save();toast(el.checked?'API enabled — fill in the details below':'Using offline coach','ok');},
+  saveAI(){
+    state.aiConfig.baseUrl=$('#aiUrl').value.trim();state.aiConfig.key=$('#aiKey').value.trim();state.aiConfig.model=$('#aiModel').value.trim();
+    saveNow();toast('AI config saved locally','ok');render();
+  },
+  export(){
+    const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+    a.download=`studyos-backup-${todayISO()}.json`;a.click();URL.revokeObjectURL(a.href);
+    toast('Backup downloaded','ok');
+  },
+  import(){$('#importFile').click();},
+  sample(){
+    confirmModal('Load a small <strong>sample dataset</strong> (2 subjects, routine, tasks, sessions, tests)? Your current data will be <strong>replaced</strong>. Useful to explore the app.',()=>{
+      state=sampleData();saveNow();applyTheme();render();toast('Sample data loaded — explore, then export/reset anytime','ok');
+    },{label:'Load sample'});
+  },
+  reset(){
+    confirmModal('This <strong>permanently deletes all</strong> StudyOS data on this device. Consider exporting a backup first.',()=>{
+      confirmModal('Really delete everything? This cannot be undone.',()=>{
+        state=freshState();saveNow();location.reload();
+      },{label:'Yes, delete all'});
+    },{label:'Reset app'});
+  }
+};
+document.addEventListener('click',e=>{
+  const a=e.target.closest('[data-act]');if(!a)return;
+  if(a.tagName==='INPUT'&&a.type==='checkbox'&&a.dataset.act){
+    const[k]=a.dataset.act.split(':');Actions[k]&&Actions[k](a);return;}
+  e.preventDefault?.();
+  const[fn,...rest]=a.dataset.act.split(':');
+  if(Actions[fn])Actions[fn](rest.length?rest.join(':'):a,...rest);
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&e.target.id==='chatIn'){e.preventDefault();Actions.chatSend();}
+  const cell=e.target.closest?.('.cal-cell');
+  if(cell&&(e.key==='Enter'||e.key===' ')){e.preventDefault();cell.click();}
+});
+
+/* ════════════════════════════ 11. GLOBAL SEARCH ════════════════════════════ */
+function globalSearch(q){
+  const drop=$('#searchDrop');q=q.trim().toLowerCase();
+  if(!q){drop.classList.remove('open');return;}
+  const R=[];
+  const push=(g,items)=>items.forEach(it=>R.push({g,...it}));
+  push('Tasks',state.tasks.filter(x=>x.title.toLowerCase().includes(q)).slice(0,4).map(x=>({label:x.title,sub:fmtDate(x.date),go:()=>{currentView='planner';render();}})));
+  push('Subjects',state.subjects.filter(x=>x.name.toLowerCase().includes(q)).slice(0,3).map(x=>({label:x.name,sub:subjectProgress(x)+'%',go:()=>{currentView='subjects';render();}})));
+  push('Notes',state.notes.filter(x=>x.title.toLowerCase().includes(q)||x.body.toLowerCase().includes(q)).slice(0,4).map(x=>({label:x.title,sub:'note',go:()=>{currentView='notes';noteQ=x.title;render();Actions.openNote(x.id);}})));
+  push('Exams',state.exams.filter(x=>x.name.toLowerCase().includes(q)).slice(0,3).map(x=>({label:x.name,sub:fmtDate(x.date),go:()=>{currentView='exams';render();}})));
+  push('Assignments',state.assignments.filter(x=>x.title.toLowerCase().includes(q)).slice(0,3).map(x=>({label:x.title,sub:fmtDate(x.due),go:()=>{currentView='assignments';render();}})));
+  push('Tests',state.tests.filter(x=>x.name.toLowerCase().includes(q)).slice(0,3).map(x=>({label:x.name,sub:fmtDate(x.date),go:()=>{currentView='tests';render();}})));
+  push('Mistakes',state.mistakes.filter(x=>x.question.toLowerCase().includes(q)).slice(0,3).map(x=>({label:x.question.slice(0,44),sub:fmtDate(x.date),go:()=>{currentView='mistakes';render();}})));
+  push('Goals',state.goals.filter(x=>x.title.toLowerCase().includes(q)).slice(0,3).map(x=>({label:x.title,sub:x.type,go:()=>{currentView='goals';render();}})));
+  push('Revisions',state.revisions.filter(x=>x.topic.toLowerCase().includes(q)).slice(0,3).map(x=>({label:x.topic,sub:'rev '+fmtDate(x.due),go:()=>{currentView='revision';render();}})));
+  drop.innerHTML=R.length?R.map((r,i)=>`<div class="sr-item" data-sr="${i}">${I('search',13)} <span>${esc(r.label)}</span><small>${esc(r.sub)}</small></div>`).join(''):'<div class="empty" style="padding:16px">No matches</div>';
+  drop.classList.add('open');
+  drop.querySelectorAll('[data-sr]').forEach(el=>el.onclick=()=>{drop.classList.remove('open');R[Number(el.dataset.sr)].go();});
+}
+
+/* ════════════════════════════ 12. ONBOARDING ════════════════════════════ */
+function onboarding(){
+  const back=document.createElement('div');back.className='mback';back.style.zIndex=300;
+  back.innerHTML=`<div class="modal" style="max-width:600px"><div class="modal-h"><h3>Welcome to AI StudyOS</h3></div>
+  <div class="modal-b">
+    <div class="ob-progress"><i class="on"></i><i id="obP2"></i><i id="obP3"></i></div>
+    <div class="ob-step on" data-s="1">
+      <p style="margin-bottom:14px;color:var(--ink2);font-size:13.5px">Your personal study operating system. Everything stays on this device. Let's set up your profile.</p>
+      <div class="fld"><label>Your name *</label><input id="obName" placeholder="Alex"></div>
+      <div class="fld"><label>Main academic goal *</label><input id="obGoal" placeholder="Top 10% in finals / crack entrance exam…"></div>
+      <div class="frow"><div class="fld"><label>Daily study hours available *</label><input type="number" id="obHours" min="1" max="16" value="3"></div>
+      <div class="fld"><label>Subjects (comma separated) *</label><input id="obSubs" placeholder="Mathematics, Physics, History"></div></div>
+    </div>
+    <div class="ob-step" data-s="2">
+      <p style="margin-bottom:14px;color:var(--ink2);font-size:13.5px">Your daily rhythm — I'll build a starter routine around it (fully editable later).</p>
+      <div class="frow"><div class="fld"><label>Typical wake-up *</label><input type="time" id="obWake" value="06:30"></div>
+      <div class="fld"><label>Typical sleep *</label><input type="time" id="obSleep" value="23:00"></div></div>
+      <label style="display:flex;gap:9px;align-items:center;font-size:13.5px;cursor:pointer;margin-bottom:8px"><input type="checkbox" id="obClasses" checked style="width:auto"> I attend daytime classes/college (blocks 9:00–15:00 on weekdays)</label>
+      <label style="display:flex;gap:9px;align-items:center;font-size:13.5px;cursor:pointer"><input type="checkbox" id="obEx" checked style="width:auto"> Include exercise &amp; meal blocks</label>
+    </div>
+    <div class="ob-step" data-s="3">
+      <p style="margin-bottom:14px;color:var(--ink2);font-size:13.5px">Any exams coming up? I'll start a countdown and prep plan (you can skip).</p>
+      <div class="frow"><div class="fld"><label>Exam name</label><input id="obExName" placeholder="Final Mathematics"></div>
+      <div class="fld"><label>Exam date</label><input type="date" id="obExDate"></div></div>
+      <div class="hint">That's it — your initial study plan generates automatically on the next step.</div>
+    </div>
+    <div class="ob-step" data-s="4" style="text-align:center;padding:20px 0">
+      <div style="width:52px;height:52px;border-radius:16px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;margin:0 auto 14px">${I('check',24)}</div>
+      <h3 style="font-size:20px;margin-bottom:8px" id="obDoneTitle">You're all set!</h3>
+      <p id="obDone" style="color:var(--ink2);font-size:13.5px"></p>
+    </div>
+  </div>
+  <div class="modal-f"><button class="btn ghost" id="obBack" style="display:none">Back</button><button class="btn pri" id="obNext">Continue</button></div></div>`;
+  document.body.appendChild(back);
+  let step=1;
+  const show=()=>{back.querySelectorAll('.ob-step').forEach(s=>s.classList.toggle('on',Number(s.dataset.s)===step));
+    back.querySelector('#obBack').style.display=step>1&&step<4?'':'none';
+    back.querySelector('#obNext').textContent=step===3?'Generate my plan':step===4?'Open dashboard':'Continue';
+    back.querySelector('#obP2').classList.toggle('on',step>=2);back.querySelector('#obP3').classList.toggle('on',step>=3);};
+  back.querySelector('#obBack').onclick=()=>{step=Math.max(1,step-1);show();};
+  back.querySelector('#obNext').onclick=()=>{
+    if(step===1){
+      if(!back.querySelector('#obName').value.trim()||!back.querySelector('#obSubs').value.trim()){toast('Please fill name and subjects','warn');return;}
+      step=2;show();return;
+    }
+    if(step===2){step=3;show();return;}
+    if(step===3){
+      // generate everything from real inputs
+      const name=back.querySelector('#obName').value.trim();
+      state.user={name,goal:back.querySelector('#obGoal').value.trim(),
+        targetMin:Math.max(60,Number(back.querySelector('#obHours').value)*60),onboarded:true,
+        wake:back.querySelector('#obWake').value||'06:30',sleep:back.querySelector('#obSleep').value||'23:00'};
+      back.querySelector('#obSubs').value.split(',').map(s=>s.trim()).filter(Boolean).forEach(n=>state.subjects.push(newSubject(n)));
+      // routine skeleton
+      const wake=toMin(state.user.wake),sleep=toMin(state.user.sleep);
+      const add=(title,category,start,end,priority='medium',subjectId=null)=>{
+        const days=[0,1,2,3,4,5,6];
+        days.forEach(d=>state.routine.push({id:uid(),title,category,start:fmtHM(start),end:fmtHM(end),repeat:'weekly',days:[d],priority,subjectId,notes:''}));
+      };
+      if(back.querySelector('#obEx').checked){add('Wake up & morning routine','personal',wake,wake+30);add('Breakfast','meal',wake+30,wake+60);add('Exercise','exercise',wake+60,wake+90);}
+      if(back.querySelector('#obClasses').checked)add('Classes / college','class',540,900,'high');
+      if(back.querySelector('#obEx').checked)add('Lunch','meal',900,930);
+      // distribute study blocks into free windows before sleep
+      const target=state.user.targetMin;
+      const blocksDesired=Math.min(3,Math.max(1,Math.round(target/75)));
+      let start=back.querySelector('#obClasses').checked?1020:wake+120, cursor=start;
+      for(let i=0;i<blocksDesired;i++){
+        const dur=Math.min(90,Math.max(45,Math.round(target/blocksDesired)));
+        if(cursor+dur+20>=sleep-30)break;
+        add(i===0?'Deep study session':'Study session '+(i+1),'study',cursor,cursor+dur,'high',state.subjects[i%state.subjects.length]?.id||null);
+        cursor+=dur+15;
+      }
+      add('Wind down & sleep prep','personal',Math.max(cursor+10,sleep-30),Math.min(sleep+0,1439));
+      // exam
+      const exName=back.querySelector('#obExName').value.trim(),exDate=back.querySelector('#obExDate').value;
+      if(exName&&exDate)state.exams.push({id:uid(),name:exName,subjectId:state.subjects[0]?.id||null,date:exDate,importance:'high',prep:0,chapters:[]});
+      // first goal
+      state.goals.push({id:uid(),title:state.user.goal||'Build a consistent study habit',type:'academic',target:'Establish the daily routine',deadline:addDays(todayISO(),30),progress:0,milestones:[{text:'Complete 5 focus sessions',done:false},{text:'Log first test result',done:false}],status:'In Progress'});
+      state.habits.push({id:uid(),name:'Daily study',log:{}});
+      saveNow();
+      const nBlocks=state.routine.filter(b=>b.category==='study').length/7;
+      back.querySelector('#obDoneTitle').textContent=`Welcome, ${name}!`;
+      back.querySelector('#obDone').innerHTML=`Generated: ${state.subjects.length} subjects · ${Math.round(nBlocks)} daily study block(s) (${fmtMin(target)}/day target)${exName?` · <strong>${esc(exName)}</strong> countdown started`:''}.<br>Everything is editable — check the Dashboard briefing to begin.`;
+      step=4;show();
+      back.querySelector('#obNext').onclick=()=>{back.remove();render();toast('Initial study plan ready','ok');};
+    }
+  };
+}
+
+/* ════════════════════════════ 13. SAMPLE DATA (user-invoked) ════════════════════════════ */
+function sampleData(){
+  const s=freshState();
+  s.user={name:'Sam',goal:'Top of the class in finals',targetMin:210,onboarded:true,wake:'06:30',sleep:'23:00'};
+  const math={id:uid(),name:'Mathematics',color:PALETTE[0],chapters:[
+    {id:uid(),name:'Calculus',topics:[{id:uid(),name:'Limits',done:true,conf:4},{id:uid(),name:'Derivatives',done:true,conf:4},{id:uid(),name:'Integration',done:true,conf:3},{id:uid(),name:'Applications',done:false}]},
+    {id:uid(),name:'Linear Algebra',topics:[{id:uid(),name:'Matrices',done:true,conf:4},{id:uid(),name:'Eigenvalues',done:true,conf:2},{id:uid(),name:'Vector spaces',done:false}]},
+    {id:uid(),name:'Statistics',topics:[{id:uid(),name:'Distributions',done:true,conf:2},{id:uid(),name:'Hypothesis testing',done:false}]}],hours:0};
+  const phy={id:uid(),name:'Physics',color:PALETTE[1],chapters:[
+    {id:uid(),name:'Mechanics',topics:[{id:uid(),name:'Kinematics',done:true,conf:4},{id:uid(),name:'Newton\'s laws',done:true,conf:3},{id:uid(),name:'Momentum',done:false}]},
+    {id:uid(),name:'Electromagnetism',topics:[{id:uid(),name:'Electric fields',done:true,conf:2},{id:uid(),name:'Circuits',done:false}]}],hours:0};
+  s.subjects=[math,phy];
+  const addR=(title,category,start,end,days,priority='medium',subjectId=null)=>days.forEach(d=>s.routine.push({id:uid(),title,category,start,end,repeat:'weekly',days:[d],priority,subjectId,notes:''}));
+  [1,2,3,4,5,6,0].forEach(d=>{
+    addR('Wake & morning routine','personal','06:30','07:00',[d]);addR('Breakfast','meal','07:00','07:30',[d]);
+    if(d>=1&&d<=5)addR('Classes','class','09:00','15:00',[d],'high');
+    addR('Lunch','meal','13:00','13:30',[d]);
+    if(d>=1&&d<=5){addR('Study: Mathematics','study','17:00','18:30',[d],'high',math.id);addR('Study: Physics','study','19:00','20:30',[d],'high',phy.id);}
+    else{addR('Deep study — long session','study','10:00','12:30',[d],'high',math.id);addR('Study + weekly review','study','17:00','19:00',[d],'medium',phy.id);}
+    addR('Exercise','exercise','18:30','19:00',[d]);addR('Wind down','personal','22:30','23:00',[d]);
+  });
+  // sessions over past 12 days
+  lastNDays(12).slice(0,11).forEach((d,i)=>{
+    if(i%5===4)return; // rest days → realistic streak
+    s.sessions.push({id:uid(),date:d,start:'17:00',duration:85+((i*37)%50),planned:90,completion:100,focus:3+(i%3===0?0:1)-0,subjectId:i%2?phy.id:math.id,topic:i%2?'Kinematics':'Integration',notes:''});
+    if(i%3===0)s.sessions.push({id:uid(),date:d,start:'19:00',duration:60,planned:90,completion:67,focus:3,subjectId:phy.id,topic:'Electric fields',notes:''});
+  });
+  math.hours=480;phy.hours=390;
+  s.tasks=[
+    {id:uid(),title:'Integration practice set 4',subjectId:math.id,chapter:'Calculus',topic:'Integration',date:todayISO(),deadline:todayISO(),priority:'high',difficulty:'hard',est:60,actual:0,status:'In Progress',type:'practice'},
+    {id:uid(),title:'Read Electromagnetism ch.2',subjectId:phy.id,chapter:'Electromagnetism',topic:'Circuits',date:todayISO(),deadline:addDays(todayISO(),2),priority:'medium',difficulty:'moderate',est:45,actual:0,status:'Not Started',type:'study'},
+    {id:uid(),title:'Vector spaces — full chapter',subjectId:math.id,chapter:'Linear Algebra',topic:'Vector spaces',date:addDays(todayISO(),-2),priority:'high',difficulty:'hard',est:90,actual:0,status:'Not Started',type:'study'},
+    {id:uid(),title:'Statistics summary notes',subjectId:math.id,chapter:'Statistics',topic:'Distributions',date:addDays(todayISO(),1),priority:'low',difficulty:'easy',est:40,actual:0,status:'Not Started',type:'notes'},
+    {id:uid(),title:'Momentum problems',subjectId:phy.id,chapter:'Mechanics',topic:'Momentum',date:todayISO(),priority:'medium',est:45,actual:45,status:'Completed',type:'practice'},
+    {id:uid(),title:'Past paper section A',subjectId:math.id,date:addDays(todayISO(),3),priority:'high',est:90,status:'Not Started',type:'exam-prep'}
+  ];
+  s.revisions=[
+    {id:uid(),subjectId:math.id,topic:'Eigenvalues',due:todayISO(),confidence:2,history:[{date:addDays(todayISO(),-6),confidence:2}]},
+    {id:uid(),subjectId:math.id,topic:'Distributions',due:addDays(todayISO(),-1),confidence:2,history:[{date:addDays(todayISO(),-8),confidence:2}]},
+    {id:uid(),subjectId:phy.id,topic:'Electric fields',due:todayISO(),confidence:2,history:[{date:addDays(todayISO(),-7),confidence:2}]},
+    {id:uid(),subjectId:phy.id,topic:'Newton\'s laws',due:addDays(todayISO(),4),confidence:3,history:[{date:addDays(todayISO(),-3),confidence:3}]},
+    {id:uid(),subjectId:math.id,topic:'Derivatives',due:addDays(todayISO(),9),confidence:4,history:[{date:addDays(todayISO(),-5),confidence:4}]}
+  ];
+  s.exams=[{id:uid(),name:'Mid-term Mathematics',subjectId:math.id,date:addDays(todayISO(),9),importance:'high',prep:55,chapters:['Calculus','Linear Algebra','Statistics']}];
+  s.assignments=[
+    {id:uid(),title:'Physics lab report — circuits',subjectId:phy.id,due:addDays(todayISO(),2),priority:'high',progress:40,notes:'Need graph + conclusion'},
+    {id:uid(),title:'Math project: statistics survey',subjectId:math.id,due:addDays(todayISO(),6),priority:'medium',progress:10,notes:''}
+  ];
+  s.tests=[
+    {id:uid(),name:'Unit test 3',subjectId:math.id,date:addDays(todayISO(),-14),total:50,obtained:34,topics:['Integration'],mistakes:'Substitution errors'},
+    {id:uid(),name:'Unit test 4',subjectId:math.id,date:addDays(todayISO(),-4),total:50,obtained:41,topics:['Integration','Matrices'],mistakes:''},
+    {id:uid(),name:'Physics quiz',subjectId:phy.id,date:addDays(todayISO(),-6),total:20,obtained:11,topics:['Electric fields'],mistakes:'Sign conventions'}
+  ];
+  s.mistakes=[
+    {id:uid(),question:'∫ x·e^x dx — used wrong integration order',subjectId:math.id,topic:'Integration',type:'concept gap',solution:'Use integration by parts with u=x',explanation:'Revisit ILATE rule',date:addDays(todayISO(),-9)},
+    {id:uid(),question:'Eigenvalue determinant sign flipped',subjectId:math.id,topic:'Eigenvalues',type:'calculation error',solution:'det(A−λI)=0 carefully',explanation:'Slow down on signs',date:addDays(todayISO(),-5)},
+    {id:uid(),question:'Circuit current direction misread',subjectId:phy.id,topic:'Electric fields',type:'misread question',solution:'Redraw the circuit first',explanation:'Diagram before solving',date:addDays(todayISO(),-6)}
+  ];
+  s.notes=[
+    {id:uid(),title:'Integration by parts — recipe',subjectId:math.id,tags:['calculus','formula'],fav:true,created:Date.now()-86400000,body:'**ILATE** order for choosing u:\nLog, Inverse trig, Algebraic, Trig, Exponential.\n\n### Steps\n1. Pick u by ILATE\n2. Apply ∫u dv = uv − ∫v du\n3. Check by differentiating result'},
+    {id:uid(),title:'Electric field sign conventions',subjectId:phy.id,tags:['physics','exam'],fav:false,created:Date.now()-2*86400000,body:'Field points **away** from positive charges.\nAlways define a direction before computing.\nCommon trap: forgetting charge sign in F = qE.'}
+  ];
+  s.goals=[
+    {id:uid(),title:'Reach 75% on next math test',type:'monthly',target:'From 68% to 75%+',deadline:addDays(todayISO(),20),progress:35,milestones:[{text:'Finish Integration practice',done:false},{text:'Fix eigenvalue mistakes',done:true},{text:'One full mock',done:false}]},
+    {id:uid(),title:'Study 20h this week',type:'weekly',target:'20 hours',deadline:addDays(todayISO(),6-(new Date().getDay()+6)%7),progress:0,milestones:[]}
+  ];
+  s.habits=[
+    {id:uid(),name:'Daily study',log:Object.fromEntries(lastNDays(14).slice(0,11).filter((_,i)=>i%5!==4).map(d=>[d,true]))},
+    {id:uid(),name:'No phone before bed',log:Object.fromEntries(lastNDays(14).filter((_,i)=>i%3!==1).map(d=>[d,true]))},
+    {id:uid(),name:'Exercise',log:Object.fromEntries(lastNDays(14).filter((_,i)=>i%2===0).map(d=>[d,true]))}
+  ];
+  s.meta.created=todayISO();
+  return s;
+}
+
+/* ════════════════════════════ 14. BOOT ════════════════════════════ */
+function applyTheme(){
+  document.documentElement.dataset.theme=state.settings.theme;
+  document.body.classList.toggle('rm',state.settings.reduceMotion);
+  const tb=$('#themeBtn');tb.innerHTML=I(state.settings.theme==='light'?'moon':'sun',18);
+  $('#userTag').textContent=state.user.name?state.user.name.toLowerCase()+' · study os':'personal assistant';
+}
+async function boot(){
+  const loaded=await Store.load();
+  state=loaded&&loaded.user?loaded:freshState();
+  // migrate safety
+  state.meta=state.meta||{created:todayISO(),notifSent:{},lastOpen:null};
+  applyTheme();updateBell();
+  $('#globalSearch').addEventListener('input',debounce(e=>globalSearch(e.target.value),140));
+  document.addEventListener('click',e=>{if(!e.target.closest('.searchbox'))$('#searchDrop').classList.remove('open');});
+  if(!e_algo_guard())return;
+  if(!state.user.onboarded){render();onboarding();}
+  else{render();
+    // returning-user greeting logic
+    if(state.meta.lastOpen&&state.meta.lastOpen!==todayISO()){
+      const od=outstandingItems().length;
+      if(od)setTimeout(()=>pushNotif('Welcome back','You have '+od+' outstanding item(s) from before','out',null),900);
+    }
+    state.meta.lastOpen=todayISO();save();
+  }
+  afterRenderBind();
+  setInterval(()=>{const c=$('#clock');if(c)c.textContent=nowHM();if(currentView==='dash'){/* refresh now-line occasionally */}},30000);
+  $('#clock').textContent=nowHM();
+  window.addEventListener('resize',redrawCharts);
+}
+function e_algo_guard(){return true;}
+function afterRenderBind(){
+  // view-specific post-render hooks
+  const origRender=render;
+  render=function(){origRender();
+    if(currentView==='dash')afterRenderDash();
+    if(currentView==='focus')afterRenderFocus();
+    if(currentView==='analytics')afterRenderAnalytics();
+    if(currentView==='tests')afterRenderTests();
+    if(currentView==='habits')afterRenderHabits();
+    if(currentView==='notes'){const ns=$('#noteSearch');if(ns)ns.addEventListener('input',debounce(e=>{noteQ=e.target.value;const c=$('#main .view');c.innerHTML=Views.notes();const ns2=$('#noteSearch');ns2.focus();ns2.setSelectionRange(ns2.value.length,ns2.value.length);ns2.addEventListener('input',arguments.callee?undefined:undefined);},160));}
+  };
+}
+boot();
+</script>
+</body>
+</html>
